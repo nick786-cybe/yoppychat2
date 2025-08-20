@@ -137,7 +137,7 @@ def whop_login_success():
 
     try:
         decoded_payload = jwt.decode(token, jwt_secret, algorithms=['HS256'])
-        
+
         email = decoded_payload['email']
         supabase_admin = get_supabase_admin_client()
         list_of_users = supabase_admin.auth.admin.list_users()
@@ -194,17 +194,17 @@ def whop_installation_callback():
         decoded_payload = jwt.decode(token, jwt_secret, algorithms=['HS256'])
         owner_email = decoded_payload['owner_email']
         whop_community_id = decoded_payload['whop_community_id']
-        
+
         supabase_admin = get_supabase_admin_client()
         list_of_users = supabase_admin.auth.admin.list_users()
         auth_user = next((u for u in list_of_users if u.email == owner_email), None)
-        
+
         if not auth_user:
             new_user_res = supabase_admin.auth.admin.create_user({'email': owner_email, 'email_confirm': True, 'password': secrets.token_urlsafe(16)})
             auth_user = new_user_res.user
 
         app_user_id = str(auth_user.id)
-        
+
         # Create the community first to get its ID
         community_data = {
             'whop_community_id': whop_community_id,
@@ -227,7 +227,7 @@ def whop_installation_callback():
         }
         db_utils.create_or_update_profile(profile_data)
         db_utils.create_initial_usage_stats(app_user_id)
-        
+
         # Set the session to log the owner in
         session['user'] = auth_user.model_dump()
         flash('Your community has been successfully installed! You have 10 free queries to test out the bot.', 'success')
@@ -550,111 +550,6 @@ def refresh_channel_route(channel_id):
         logging.error(f"Error initiating refresh for channel {channel_id}: {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'An error occurred while starting the refresh.'}), 500
 
-# ---- Telegram connect (per-user) ----
-@app.route('/telegram/connect', methods=['GET', 'POST'])
-def connect_telegram():
-    if 'user' not in session:
-        return render_template('connect_telegram.html', user=None, saved_channels={})
-    user_id = session['user']['id']
-    supabase_admin = get_supabase_admin_client()
-    existing_response = supabase_admin.table('telegram_connections').select('*').eq('app_user_id', user_id).limit(1).execute()
-    if existing_response.data and existing_response.data[0].get('is_active'):
-        existing_data = existing_response.data[0]
-        return render_template(
-            'connect_telegram.html',
-            connection_status='connected',
-            telegram_username=existing_data.get('telegram_username', 'N/A'),
-            saved_channels=get_user_channels(),
-            user=session.get('user')
-        )
-    if request.method == 'POST':
-        connection_code = secrets.token_hex(8)
-        data_to_store = {
-            'app_user_id': user_id,
-            'telegram_chat_id': 0,
-            'connection_code': connection_code,
-            'created_at': datetime.now(timezone.utc).isoformat(),
-            'is_active': False
-        }
-        supabase_admin.table('telegram_connections').upsert(data_to_store, on_conflict='app_user_id').execute()
-        token, _ = get_bot_token_and_url()
-        bot_username = token.split(':')[0] if token else 'YourBot'
-        return render_template(
-            'connect_telegram.html',
-            connection_status='code_generated',
-            connection_code=connection_code,
-            bot_username=bot_username,
-            saved_channels=get_user_channels(),
-            user=session.get('user')
-        )
-    return render_template(
-        'connect_telegram.html',
-        connection_status='not_connected',
-        saved_channels=get_user_channels(),
-        user=session.get('user')
-    )
-
-# ---- Telegram group connect/disconnect tied to a channel ----
-@app.route('/channel/<int:channel_id>/connect_group')
-@login_required
-def connect_group(channel_id):
-    supabase_admin = get_supabase_admin_client()
-    supabase = get_supabase_client(session.get('access_token'))
-    user_id = session['user']['id']
-    link_check = supabase.table('user_channels').select('channel_id').eq('user_id', user_id).eq('channel_id', channel_id).limit(1).execute()
-    if not link_check.data:
-        flash("You do not have permission to access this channel.", 'error')
-        return redirect(url_for('channel'))
-    channel_resp = supabase_admin.table('channels').select('id, channel_name').eq('id', channel_id).single().execute()
-    if not channel_resp.data:
-        flash('Channel not found.', 'error')
-        return redirect(url_for('channel'))
-    response = supabase_admin.table('group_connections').select('*').eq('linked_channel_id', channel_id).eq('is_active', True).limit(1).execute()
-    if response.data:
-        return render_template(
-            'connect_group.html',
-            connection_status='connected',
-            channel=channel_resp.data,
-            group_details=response.data[0],
-            saved_channels=get_user_channels()
-        )
-    connection_code = secrets.token_hex(10)
-    supabase_admin.table('group_connections').upsert({
-        'owner_user_id': user_id,
-        'linked_channel_id': channel_id,
-        'connection_code': connection_code,
-        'is_active': False
-    }, on_conflict='linked_channel_id').execute()
-    token, _ = get_bot_token_and_url()
-    bot_username = token.split(':')[0] if token else 'YourBot'
-    return render_template(
-        'connect_group.html',
-        connection_status='code_generated',
-        channel=channel_resp.data,
-        connection_code=connection_code,
-        bot_username=bot_username,
-        saved_channels=get_user_channels()
-    )
-
-@app.route('/channel/<int:channel_id>/disconnect_group', methods=['POST'])
-@login_required
-def disconnect_group(channel_id):
-    user_id = session['user']['id']
-    supabase = get_supabase_client(session.get('access_token'))
-    supabase_admin = get_supabase_admin_client()
-    link_check = supabase.table('user_channels').select('channels(channel_name)') \
-        .eq('user_id', user_id).eq('channel_id', channel_id).single().execute()
-    if not (link_check.data and link_check.data.get('channels')):
-        flash("You do not have permission to modify this channel's connection.", 'error')
-        return redirect(url_for('channel'))
-    channel_name = link_check.data['channels']['channel_name']
-    try:
-        supabase_admin.table('group_connections').delete().eq('linked_channel_id', channel_id).execute()
-        flash('Telegram group successfully disconnected.', 'success')
-    except APIError as e:
-        flash(f"An error occurred while disconnecting: {e.message}", 'error')
-    return redirect(url_for('ask', channel_name=channel_name))
-
 # ---- Telegram webhook ----
 @app.route('/telegram/webhook/<webhook_secret>', methods=['POST'])
 def telegram_webhook(webhook_secret):
@@ -721,6 +616,98 @@ def clear_chat():
 def logout():
     session.clear()
     return redirect(url_for('home'))
+
+@app.route('/integrations', methods=['GET', 'POST'])
+def integrations():
+    if 'user' not in session:
+        return render_template('integrations.html', user=None)
+
+    user_id = session['user']['id']
+    supabase_admin = get_supabase_admin_client()
+
+    # POST request handling
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'connect_personal':
+            connection_code = secrets.token_hex(8)
+            data_to_store = {
+                'app_user_id': user_id,
+                'telegram_chat_id': 0,
+                'connection_code': connection_code,
+                'created_at': datetime.now(timezone.utc).isoformat(),
+                'is_active': False
+            }
+            supabase_admin.table('telegram_connections').upsert(data_to_store, on_conflict='app_user_id').execute()
+        elif action == 'disconnect_personal':
+            supabase_admin.table('telegram_connections').delete().eq('app_user_id', user_id).execute()
+        elif action == 'disconnect_group':
+            channel_id = request.form.get('channel_id')
+            supabase_admin.table('group_connections').delete().eq('linked_channel_id', channel_id).execute()
+            flash('Telegram group successfully disconnected.', 'success')
+
+        return redirect(url_for('integrations', channel_id=request.form.get('channel_id')))
+
+    # GET request handling
+    # Personal connection
+    personal_connection_status = 'not_connected'
+    telegram_username = None
+    personal_connection_code = None
+    existing_response = supabase_admin.table('telegram_connections').select('*').eq('app_user_id', user_id).limit(1).execute()
+    if existing_response.data:
+        existing_data = existing_response.data[0]
+        if existing_data.get('is_active'):
+            personal_connection_status = 'connected'
+            telegram_username = existing_data.get('telegram_username', 'N/A')
+        else:
+            personal_connection_status = 'code_generated'
+            personal_connection_code = existing_data.get('connection_code')
+
+    # Group connection
+    group_connection_status = 'not_connected'
+    group_details = None
+    group_connection_code = None
+    selected_channel_id = request.args.get('channel_id', type=int)
+    if selected_channel_id:
+        response = supabase_admin.table('group_connections').select('*').eq('linked_channel_id', selected_channel_id).eq('is_active', True).limit(1).execute()
+        if response.data:
+            group_connection_status = 'connected'
+            group_details = response.data[0]
+        else:
+            group_connection_status = 'code_generated'
+            connection_code = secrets.token_hex(10)
+            supabase_admin.table('group_connections').upsert({
+                'owner_user_id': user_id,
+                'linked_channel_id': selected_channel_id,
+                'connection_code': connection_code,
+                'is_active': False
+            }, on_conflict='linked_channel_id').execute()
+            group_connection_code = connection_code
+
+    token, _ = get_bot_token_and_url()
+    bot_username = token.split(':')[0] if token else 'YourBot'
+
+    return render_template(
+        'integrations.html',
+        user=session.get('user'),
+        saved_channels=get_user_channels(),
+        personal_connection_status=personal_connection_status,
+        telegram_username=telegram_username,
+        personal_connection_code=personal_connection_code,
+        group_connection_status=group_connection_status,
+        group_details=group_details,
+        group_connection_code=group_connection_code,
+        selected_channel_id=selected_channel_id,
+        bot_username=bot_username
+    )
+
+@app.route('/disconnect_telegram', methods=['POST'])
+@login_required
+def disconnect_telegram():
+    user_id = session['user']['id']
+    supabase_admin = get_supabase_admin_client()
+    supabase_admin.table('telegram_connections').delete().eq('app_user_id', user_id).execute()
+    flash('Telegram account disconnected successfully.', 'success')
+    return redirect(url_for('integrations'))
 
 @app.route('/about')
 def about():
