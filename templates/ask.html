@@ -38,7 +38,7 @@
             {% if channel_name %}
                 <a href="#" onclick="refreshChannel('{{ saved_channels[channel_name].id }}', this); return false;">Refresh Channel</a>
                 <a href="#" onclick="clearChat('{{ channel_name }}'); return false;">Clear Chat</a>
-                <a href="{{ url_for('connect_group', channel_id=saved_channels[channel_name].id) }}">Add Bot to Telegram Group</a>
+                <a href="{{ url_for('integrations', channel_id=saved_channels[channel_name].id) }}">Add Bot to Telegram Group</a>
                 <hr>
                 <a href="{{ saved_channels.get(channel_name, {}).get('channel_url', '#') }}" target="_blank" rel="noopener noreferrer">View on YouTube</a>
             {% else %}
@@ -1356,4 +1356,5 @@ function askExample(element) {
     }
 }
 </script>
+
 {% endblock %}
