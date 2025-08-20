@@ -1,0 +1,956 @@
+{% from "_macros.html" import render_sidebar_channel_item %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}YouTube Channel QA{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main-purged.css') }}">
+    
+    <style>
+        /* CSS for the Login Popup (Restored) */
+        .login-popup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000; animation: fadeIn 0.3s ease;
+        }
+        .login-popup-content {
+            background: var(--surface-light); padding: var(--spacing-2xl);
+            border-radius: var(--radius-xl); box-shadow: var(--shadow-xl);
+            width: 100%; max-width: 420px; text-align: center;
+            position: relative; animation: slideUp 0.4s ease;
+        }
+        .login-popup-close-btn {
+            position: absolute; top: 16px; right: 16px; background: none;
+            border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;
+            padding: 5px;
+        }
+        .login-popup-icon { margin-bottom: var(--spacing-lg); }
+        .login-popup-title {
+            font-size: 1.75rem; font-weight: 700; color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+        .login-popup-subtitle { color: var(--text-secondary); margin-bottom: var(--spacing-xl); }
+        .login-popup-google-btn {
+            display: flex; align-items: center; justify-content: center;
+            gap: var(--spacing-md); width: 100%; padding: var(--spacing-md);
+            background: var(--surface-light); color: var(--text-primary);
+            border: 1px solid var(--neutral-300); border-radius: var(--radius-md);
+            font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+        }
+        .login-popup-google-btn:hover { background: var(--surface-medium); }
+        .login-popup-terms { font-size: 0.8rem; color: var(--text-muted); margin-top: var(--spacing-lg); }
+        @media (max-width: 768px) {
+            #login-popup-modal { align-items: flex-end; }
+            #login-popup-modal .login-popup-content {
+                max-width: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+                animation: slideUpFromBottom 0.4s ease;
+            }
+            @keyframes slideUpFromBottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        }
+        /* === NEW SIDEBAR STYLES === */
+
+/* Redesigned Sidebar Header */
+.sidebar-header {
+    background: var(--surface-light); /* Changed from gradient */
+    border-bottom: 1px solid var(--neutral-200);
+    padding: var(--spacing-md) var(--spacing-lg); /* Adjust padding */
+}
+
+.sidebar-logo-link {
+    /* This rule can remain, but the text-specific ones are no longer needed */
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+
+
+
+
+
+/* Redesigned Sidebar Footer */
+.sidebar-footer {
+    padding: var(--spacing-md); /* Standardized padding */
+    margin-top: auto; /* This is the magic line that pushes the footer to the bottom */
+    border-top: 1px solid var(--neutral-200);
+}
+
+.sidebar-actions {
+    margin-bottom: var(--spacing-md);
+}
+
+.sidebar-action-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-action-item:hover {
+    background-color: var(--surface-medium);
+    color: var(--text-primary);
+}
+
+/* New User Profile Section at the very bottom */
+.user-profile-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-medium);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-details {
+    flex-grow: 1;
+    min-width: 0; /* Prevents overflow with long names */
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-button {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.logout-button:hover {
+    background-color: var(--neutral-200);
+    color: var(--accent-error);
+}
+
+.profile-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    z-index: 1001;
+}
+
+#profile-container:hover .profile-menu, .profile-menu.show {
+    display: block;
+}
+
+.profile-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    z-index: 1001;
+}
+
+.menu-header {
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--neutral-200);
+    margin-bottom: var(--spacing-md);
+}
+
+.menu-username {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.menu-email {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.menu-plan-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.menu-plan-name {
+    font-weight: 500;
+}
+
+.menu-upgrade-btn {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+
+.menu-credits-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    font-size: 0.875rem;
+}
+
+.menu-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-links a {
+    display: block;
+    padding: var(--spacing-sm) 0;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.menu-links a:hover {
+    color: var(--text-primary);
+}
+/* === Custom Notification Styles === */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification {
+    background: var(--surface-light);
+    color: var(--text-primary);
+    padding: 16px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    border-left: 5px solid;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification.hide {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+/* --- Notification Types --- */
+.notification.success {
+    border-left-color: var(--accent-success);
+}
+
+.notification.error {
+    border-left-color: var(--accent-error);
+}
+
+.notification.info {
+    border-left-color: var(--accent-info);
+}
+
+.notification-message {
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+/* In static/css/main-purged.css */
+
+/* New spinner for inline actions like the delete icon */
+.inline-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--accent-primary);
+    border-top-color: transparent; /* Makes it a classic spinner */
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes inline-spin {
+  0% { transform: scale(0.8); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+  100% { transform: scale(0.8); opacity: 1; }
+}
+
+.login-prompt-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    padding: var(--spacing-md);
+    background-color: var(--surface-medium);
+    border: 2px dashed var(--neutral-300);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.login-prompt-btn:hover {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-secondary);
+    color: var(--text-white);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.login-prompt-btn svg {
+    transition: transform 0.2s ease-in-out;
+}
+
+.login-prompt-btn:hover svg {
+    transform: translateX(3px);
+}
+/* Class to hide the SVG icon when the spinner is active */
+.delete-btn.deleting svg {
+    display: none;
+}
+/* Add this to your main CSS file */
+
+.pricing-grid-modal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+/* Reusing styles from your landing page for consistency */
+.pricing-card {
+    background: var(--surface-light);
+    padding: 2rem 1.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--neutral-200);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.pricing-card.featured {
+    border: 2px solid var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.popular-badge {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent-primary);
+    color: var(--text-white);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.3rem 0.8rem;
+    border-radius: var(--radius-full);
+}
+
+.pricing-card h4 { font-size: 1.5rem; font-weight: 700; }
+.pricing-card .price { font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0; }
+.pricing-card .price.price-featured { font-size: 2.5rem; }
+.pricing-card .price span { font-size: 1rem; font-weight: 500; color: var(--text-muted); }
+.pricing-features { list-style: none; margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.8rem; flex-grow: 1; }
+.pricing-features li { display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); }
+.pricing-features .icon { color: var(--accent-success); }
+
+.btn-pricing {
+    display: block; width: 100%; text-align: center;
+    padding: 0.9rem 1.5rem; border-radius: var(--radius-md);
+    font-weight: 600; text-decoration: none; transition: all 0.3s ease;
+}
+
+.btn-pricing.disabled {
+    background-color: var(--accent-success);
+    color: var(--text-white);
+    cursor: default;
+    opacity: 0.8;
+}
+
+.btn-pricing-neutral {
+    background-color: var(--neutral-200); color: var(--text-primary);
+}
+.btn-pricing-neutral:not(.disabled):hover { background-color: var(--neutral-300); }
+
+.btn-pricing-accent {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: var(--text-white);
+}
+.btn-pricing-accent:not(.disabled):hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+/* --- START: MODIFIED PRICING MODAL STYLES --- */
+@media (max-width: 950px) {
+    /* Apply a standard "center" alignment for the pricing modal */
+    #pricing-modal-overlay {
+        align-items: center;
+    }
+    
+    /* Constrain the pricing modal's size and make its content scrollable */
+    #pricing-modal-overlay .login-popup-content {
+        max-width: 90%; /* Use more screen width */
+        max-height: 85vh; /* Limit height to 85% of the viewport height */
+        overflow-y: auto; /* Allow vertical scrolling INSIDE the modal */
+        padding: 1.5rem; /* Reduce padding on mobile */
+        animation: slideUp 0.4s ease; /* Use a standard slide up animation */
+    }
+    
+    /* Stack pricing cards vertically */
+    .pricing-grid-modal {
+        grid-template-columns: 1fr;
+    }
+
+    /* Remove the "featured" scaling effect on mobile */
+    .pricing-card.featured {
+        transform: scale(1);
+    }
+}
+.menu-toggle-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.theme-switch input { display: none; }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--neutral-300);
+    transition: .3s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: var(--accent-primary);
+}
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+html[data-theme='dark'] .menu-toggle-option {
+    color: var(--text-secondary);
+}
+/* --- Dynamic Logo Styles for Dark Mode --- */
+
+/* By default, show the light logo and hide the dark one */
+.logo-dark {
+    display: none;
+}
+.logo-light {
+    display: block;
+}
+
+/* When dark mode is active, hide the light logo and show the dark one */
+html[data-theme='dark'] .logo-dark {
+    display: block;
+}
+html[data-theme='dark'] .logo-light {
+    display: none;
+}
+/* =================================================================
+   FIX: Sidebar Delete Button Theme Styles
+================================================================== */
+
+/* --- Base and Light Mode Styles --- */
+
+    </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme') || 'light';
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="notification-container" class="notification-container"></div>
+
+    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle Sidebar">
+        <span></span><span></span><span></span>
+    </button>
+
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="{{ url_for('channel') }}" class="sidebar-logo-link">
+                    <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-light">
+                    <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-dark">
+                </a>
+            </div>
+            <div class="sidebar-content">
+                <div class="channel-section">
+                    <div class="channel-section-title">Channels</div>
+                    <div class="channel-list">
+                        {% if user_status and user_status.limits.max_channels > 0 %}
+                            <div class="add-channel-btn" onclick='location.href="{{ url_for("channel") }}"'>+ Add Channel</div>
+                        {% elif user_status and user_status.is_whop_user and not user_status.is_whop_pro %}
+                            <div class="add-channel-btn" onclick="showUpgradePopup()">+ Add Channel (Pro)</div>
+                        {% endif %}
+                       
+                        {% for name, channel in saved_channels.items() %}
+                            {{ render_sidebar_channel_item(channel, name) }}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% if user %}
+            <div class="sidebar-actions-section">
+                <a href="{{ url_for('connect_telegram') }}" class="sidebar-action-item">
+                    <img src="{{ url_for('static', filename='images/telegram.svg') }}" alt="Connect Telegram" width="20" height="20">
+                    <span>Connect Telegram</span>
+                </a>
+            </div>
+            {% endif %}
+            <div class="sidebar-footer">
+                <div style="position: relative;" id="profile-container">
+                    <div class="user-profile-section" id="user-profile-trigger" style="cursor: pointer;">
+                        {% if session.user %}
+                            <div class="user-avatar">
+                                <img src="{{ session.user.user_metadata.avatar_url or url_for('static', filename='images/default_avatar.png') }}" alt="User Avatar">
+                            </div>
+                            <div class="user-details">
+                                <span class="user-name">{{ session.user.user_metadata.full_name or session.user.email }}</span>
+                            </div>
+                        {% else %}
+                            <a href="#" onclick="showLoginPopup()" class="login-prompt-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                                <span>Login or Sign Up</span>
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    {# --- CORRECTED LOGIC BLOCK --- #}
+                    {% if user and user_status %}
+                    <div class="profile-menu" id="user-profile-menu">
+                        <div class="menu-header">
+                            <div class="menu-username">{{ session.user.user_metadata.full_name or "User" }}</div>
+                            <div class="menu-email">{{ session.user.email }}</div>
+                        </div>
+                        <div class="menu-plan-section">
+                            <span class="menu-plan-name">Subscription: {{ user_status.plan_name | title }}</span>
+                            <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-btn">Upgrade</a>
+                        </div>
+                        <div class="menu-credits-section">
+                            <span class="menu-credits-label">Remaining Queries</span>
+                            <span class="menu-credits-value">
+                                {% if user_status.limits.max_queries_per_month|string() == 'inf' %}
+                                    Unlimited
+                                {% else %}
+                                    {{ user_status.limits.max_queries_per_month - user_status.usage.queries_this_month }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <ul class="menu-links">
+                            {% if not user_status.is_whop_user %}
+                             <li><a href="{{ url_for('about') }}">About</a></li>
+                             <li><a href="{{ url_for('terms') }}">Terms of Service</a></li>
+                             <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+                             <li><a href="#" onclick="handleLogout(event)" class="logout">Logout</a></li>
+                            {% endif %}
+                             <li>
+                                 <div class="menu-toggle-option">
+                                     <span>Dark Mode</span>
+                                     <label class="theme-switch">
+                                         <input type="checkbox" id="profile-theme-toggle">
+                                         <span class="slider"></span>
+                                     </label>
+                                 </div>
+                             </li>
+                        </ul>
+                    </div>
+                  
+                    {% endif %} {# <-- THIS WAS THE MISSING TAG #}
+                </div>
+            </div>
+        </aside>
+        
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<main class="main-content {% if request.endpoint in ['ask', 'ask_channel'] %}has-mobile-nav{% endif %}">
+    <div class="card">
+        {% block content %}{% endblock %}
+    </div>
+</main>
+    </div>
+
+    <div id="login-popup-modal" class="login-popup-overlay">
+        <div class="login-popup-content">
+            <button class="login-popup-close-btn" onclick="closeLoginPopup()">&times;</button>
+            <div class="login-popup-icon">
+                    <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-light" width="60" height="60">
+                    <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-dark" width="60" height="60">
+            </div>
+            <h3 class="login-popup-title">Welcome to YoppyChat</h3>
+            <p class="login-popup-subtitle">Create an account or log in to continue</p>
+            <button id="google-login-btn" class="login-popup-google-btn">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.9999 10.2248C19.9999 9.53448 19.9452 8.85345 19.8265 8.18103H10.204V11.8534H15.7516C15.5344 13.069 14.8973 14.1207 13.9648 14.7759V17.2672H16.7137C18.6637 15.4397 19.9999 13.0172 19.9999 10.2248Z" fill="#4285F4"/><path d="M10.2042 20C12.8363 20 15.0432 19.181 16.7137 17.2672L13.9648 14.7759C13.0958 15.3534 11.9053 15.7328 10.2042 15.7328C7.15271 15.7328 4.60271 13.7328 3.70615 11.0603H0.836304V13.6293C2.48115 17.2328 6.09494 20 10.2042 20Z" fill="#34A853"/><path d="M3.70604 11.0603C3.52839 10.5345 3.42839 9.97414 3.42839 9.39655C3.42839 8.81897 3.52839 8.25862 3.70604 7.73276V5.16379H0.836202C0.301636 6.24138 0 7.75862 0 9.39655C0 11.0345 0.301636 12.5517 0.836202 13.6293L3.70604 11.0603Z" fill="#FBBC05"/><path d="M10.2042 3.06034C11.5794 3.06034 12.9139 3.56034 13.9053 4.50862L16.7758 1.63793C15.0349 0.0344827 12.8279 0 10.2042 0C6.09494 0 2.48115 2.76724 0.836304 6.37069L3.70615 8.93966C4.60271 6.26724 7.15271 3.06034 10.2042 3.06034Z" fill="#EA4335"/></svg>
+                Continue with Google
+            </button>
+            <p class="login-popup-terms">By signing in, you are agreeing to the <strong>Terms of Service</strong> and <strong>Privacy Policy</strong></p>
+        </div>
+    </div>
+
+    <div id="confirmDeleteDialog" class="confirm-dialog" style="display: none;">
+        <div class="confirm-content">
+            <h3>Confirm Deletion</h3>
+            <p>Are you sure you want to delete the channel "<strong id="channelToDeleteName"></strong>"? This action cannot be undone.</p>
+            <div class="confirm-actions">
+                <button class="btn cancel-btn" onclick="cancelDeleteChannel()">Cancel</button>
+                <button class="btn confirm-btn">Delete</button>
+            </div>
+        </div>
+    </div>
+<div id="pricing-modal-overlay" class="login-popup-overlay">
+    <div class="login-popup-content" style="max-width: 1200px; text-align: left;">
+        <button class="login-popup-close-btn" onclick="closePricingModal()">&times;</button>
+        <div style="padding: 1rem;">
+            <h3 class="login-popup-title" style="text-align: center;">Simple, Scalable Pricing</h3>
+
+                                        <p style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-weight: 500;">
+                We're committed to making this the best platform for creators. 90% of all revenue is reinvested directly into improving this project.
+            </p>
+            <div class="pricing-grid-modal">
+                    <div class="pricing-card">
+                        <h4>Free</h4>
+                        <p class="text-muted">Get a taste of what's possible.</p>
+                        <p class="price">₹0 <span>/ month</span></p>
+                        <a href="#" class="btn-pricing btn-pricing-neutral">Get Started</a>
+                        <ul class="pricing-features">
+                            <li><span class="icon">✓</span>3 Channel</li>
+                            <li><span class="icon">✓</span>Max 50 latest video Knowledge/channel</li>
+                            <li><span class="icon">✓</span>50 queries/month</li>
+                            <li><span class="icon">✓</span>Manual Refresh</li>
+                        </ul>
+                    </div>
+
+                    <div class="pricing-card featured">
+                        <span class="popular-badge">MOST POPULAR</span>
+                        <h4>Creator</h4>
+                        <p class="text-muted">For the serious community builder.</p>
+                        <p class="price price-featured">₹299 <span>/ month</span></p>
+                        <a href="#" class="btn-pricing btn-pricing-accent">Choose Creator</a>
+                        <ul class="pricing-features">
+                            <li><span class="icon">✓</span>10 Channels</li>
+                            <li><span class="icon">✓</span>Max 250 latest video Knowledge/channel</li>
+                            <li><span class="icon">✓</span>2,500 queries/month</li>
+                            <li><span class="icon">✓</span>Auto Weekly Refresh</li>
+                            <li><span class="icon">✓</span>Faster Responses</li>
+                            <li><span class="icon">✓</span>Access to Your Persona bot for your community</li>
+                        </ul>
+                    </div>
+
+                    <div class="pricing-card">
+                        <h4>Pro</h4>
+                        <p class="text-muted">A fully branded, white-glove experience.</p>
+                        <p class="price">₹1,499 <span>/ month</span></p>
+                        <a href="#" class="btn-pricing btn-pricing-neutral">Choose Pro</a>
+                        <ul class="pricing-features">
+                             <li><span class="icon">✓</span>Unlimited Channels</li>
+                            <li><span class="icon">✓</span>Unlimited video knowledge/channel</li>
+                            <li><span class="icon">✓</span>10,000 queries/month</li>
+                            <li><span class="icon">✓</span>Faster Responses</li>
+                            <li><span class="icon">✓</span><strong>White-labeled channel knowledge bot (custom name & profile pic)</strong></li>
+                        </ul>
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <script>
+        // All JavaScript functions (showNotification, showLoginPopup, etc.) remain the same
+        // ...
+
+    function showNotification(message, type = 'info') {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `<span class="notification-message">${message}</span>`;
+        container.appendChild(notification);
+        setTimeout(() => notification.classList.add('show'), 100);
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => { if (container.contains(notification)) container.removeChild(notification); }, 500);
+        }, 5000);
+    }
+    
+    /** Displays the login modal. */
+    function showLoginPopup() {
+        const modal = document.getElementById('login-popup-modal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    /** Closes the login modal. */
+    function closeLoginPopup() {
+        const modal = document.getElementById('login-popup-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    /** Displays the pricing modal. */
+    function showPricingModal() {
+        const modal = document.getElementById('pricing-modal-overlay');
+        if (modal) modal.style.display = 'flex';
+    }
+    
+    /** Closes the pricing modal. */
+    function closePricingModal() {
+        const modal = document.getElementById('pricing-modal-overlay');
+        if (modal) modal.style.display = 'none';
+    }
+
+    /** Signs the user out. */
+    async function handleLogout(event) {
+        event.preventDefault();
+        if (window.supabaseClient) {
+            await window.supabaseClient.auth.signOut();
+        }
+        window.location.href = "{{ url_for('logout') }}";
+    }
+
+    /** Hides the channel deletion confirmation dialog. */
+    function cancelDeleteChannel() {
+        const dialog = document.getElementById('confirmDeleteDialog');
+        if (dialog) dialog.style.display = 'none';
+    }
+
+    /**
+     * Displays the channel deletion confirmation dialog.
+     */
+    function confirmDeleteChannel(id, name, buttonElement) {
+        const dialog = document.getElementById('confirmDeleteDialog');
+        if (!dialog) return;
+        dialog.querySelector('#channelToDeleteName').textContent = name;
+        const confirmBtn = dialog.querySelector('.confirm-btn');
+        confirmBtn.onclick = () => deleteChannel(id, buttonElement);
+        dialog.style.display = 'flex';
+    }
+
+    /**
+     * Sends the delete request and handles removing ALL related channel elements from the UI.
+     */
+    function deleteChannel(id, buttonElement) {
+        if (!id || !buttonElement) {
+            console.error("Delete function called without ID or button reference.");
+            return;
+        }
+        cancelDeleteChannel();
+
+        buttonElement.disabled = true;
+        const spinner = document.createElement('div');
+        spinner.className = 'inline-spinner';
+        buttonElement.innerHTML = '';
+        buttonElement.appendChild(spinner);
+
+        fetch(`/delete_channel/${id}`, { method: 'POST' })
+            .then(res => {
+                if (!res.ok) return res.json().then(err => Promise.reject(err.message || 'Server error'));
+                return res.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification('Channel deletion started in the background.', 'info');
+                    const cardsToRemove = document.querySelectorAll(`[data-channel-id="${id}"]`);
+                    cardsToRemove.forEach(card => {
+                        card.style.transition = 'all 0.5s ease';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.95)';
+                        card.style.height = '0px';
+                        card.style.paddingTop = '0';
+                        card.style.paddingBottom = '0';
+                        card.style.marginTop = '0';
+                        card.style.marginBottom = '0';
+                        setTimeout(() => card.remove(), 500);
+                    });
+                } else {
+                    throw new Error(data.message);
+                }
+            })
+            .catch(err => {
+                showNotification(err.toString(), 'error');
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+</svg>`;
+            });
+    }
+
+    // ===================================================================
+    //  2. CORE SITE LOGIC (RUNS AFTER DOM IS READY)
+    // ===================================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const themeToggle = document.getElementById('profile-theme-toggle');
+
+        const updateThemeUI = (theme) => {
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                if (themeToggle) themeToggle.checked = true;
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                if (themeToggle) themeToggle.checked = false;
+            }
+        };
+
+        const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        updateThemeUI(currentTheme);
+
+        if (themeToggle) {
+            themeToggle.addEventListener('change', () => {
+                const newTheme = themeToggle.checked ? 'dark' : 'light';
+                localStorage.setItem('theme', newTheme);
+                updateThemeUI(newTheme);
+            });
+        }
+        /** Hamburger Menu Toggle **/
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        if (hamburgerBtn && sidebar && sidebarOverlay) {
+            const toggleSidebar = () => {
+                sidebar.classList.toggle('open');
+                sidebarOverlay.classList.toggle('show');
+                hamburgerBtn.classList.toggle('active');
+            };
+            hamburgerBtn.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+        }
+
+        /** Login Popup Logic **/
+        const loginModal = document.getElementById('login-popup-modal');
+        const loginTriggers = document.querySelectorAll('.show-login-popup');
+        const loginCloseBtn = document.querySelector('.login-popup-close-btn');
+
+        loginTriggers.forEach(btn => btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLoginPopup();
+        }));
+        
+        if(loginCloseBtn) loginCloseBtn.addEventListener('click', closeLoginPopup);
+        
+        // This is new: closes the modal if you click the background overlay
+        if(loginModal) {
+            loginModal.addEventListener('click', (event) => {
+                if (event.target === loginModal) {
+                    closeLoginPopup();
+                }
+            });
+        }
+
+        /** Supabase Client Initialization and Auth Listener **/
+        const supabaseUrl = "{{ SUPABASE_URL or '' }}";
+        const supabaseAnonKey = "{{ SUPABASE_ANON_KEY or '' }}";
+
+        if (supabaseUrl && supabaseAnonKey && window.supabase) {
+            const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+            window.supabaseClient = supabase;
+
+            const googleLoginBtn = document.getElementById('google-login-btn');
+            if (googleLoginBtn) {
+                // **THE FIX IS HERE**
+                // We add the 'event' parameter and event.stopPropagation()
+                googleLoginBtn.addEventListener('click', (event) => {
+                    // This is the critical line that fixes the bug.
+                    event.stopPropagation();
+
+                    // Now, the original Supabase logic runs without closing the modal.
+                    supabase.auth.signInWithOAuth({
+                        provider: 'google',
+                        options: { redirectTo: "{{ url_for('auth_callback', _external=True) }}" }
+                    });
+                });
+            }
+        } else {
+            console.warn("Supabase credentials not found. Auth features will be disabled.");
+        }
+            // All the core site logic (theme toggle, hamburger, etc.) remains the same
+            // ...
+
+            // --- JAVASCRIPT FOR PROFILE MENU (CLICK VERSION) ---
+            const profileTrigger = document.getElementById('user-profile-trigger');
+            const profileMenu = document.getElementById('user-profile-menu');
+
+            if (profileTrigger && profileMenu) {
+                profileTrigger.addEventListener('click', (event) => {
+                    event.stopPropagation(); 
+                    profileMenu.classList.toggle('show');
+                });
+
+                window.addEventListener('click', () => {
+                    if (profileMenu.classList.contains('show')) {
+                        profileMenu.classList.remove('show');
+                    }
+                });
+            }
+        });
+    </script>
+    
+    {% block page_scripts %}{% endblock %}
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>About YoppyChat AI - Our Mission</title>
+    <meta name="description" content="Learn about the mission and vision behind YoppyChat AI. We're bridging the gap between YouTube creators and their communities with personalized, conversational AI.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://your-app-url.com/about"> <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Onest:wght@700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-bg: #fdf8f3; --secondary-bg: #ffffff; --surface-light: #ffffff;
+            --surface-medium: #fef7f0; --surface-dark: #f4ede4; --neutral-200: #f0e6d6;
+            --accent-primary: #ff9a56; --accent-secondary: #ff8c42;
+            --text-primary: #2a1f16; --text-secondary: #5a4a32; --text-muted: #7d6847;
+            --text-white: #ffffff; --shadow-md: 0 4px 12px 0 rgba(160, 134, 96, 0.15);
+            --spacing-md: 1rem; --spacing-lg: 1.5rem; --spacing-xl: 2rem; --spacing-2xl: 3rem;
+            --radius-full: 9999px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Figtree', sans-serif; background: var(--primary-bg);
+            color: var(--text-primary); line-height: 1.7;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 0 var(--spacing-md); }
+        .header {
+            background: rgba(253, 248, 243, 0.8); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--neutral-200); padding: var(--spacing-sm) 0;
+        }
+        .nav { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 0 var(--spacing-md);}
+        .logo { font-size: 1.25rem; font-weight: 800; color: var(--text-primary); text-decoration: none; }
+        .logo-img { height: 52px; width: auto; vertical-align: middle; }
+        .cta-button {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--text-white); padding: 0.6rem 1.2rem;
+            border: none; border-radius: var(--radius-full); font-weight: 600;
+            text-decoration: none; font-size: 0.9rem;
+        }
+        .about-section { padding: 5rem 0; }
+        .about-section h1 {
+            font-family: 'Onest', sans-serif; font-size: 3rem; font-weight: 800;
+            line-height: 1.2; text-align: center; margin-bottom: 1rem;
+        }
+        .about-section h1 .highlight { color: #F97316; }
+        .about-section .subtitle {
+            font-size: 1.25rem; color: var(--text-secondary); text-align: center;
+            margin-bottom: 3rem;
+        }
+        .about-section h2 {
+            font-family: 'Onest', sans-serif; font-size: 2rem; font-weight: 700;
+            margin-top: 3rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--neutral-200);
+            padding-bottom: 0.5rem;
+        }
+        .about-section p { font-size: 1.1rem; margin-bottom: 1.5rem; color: var(--text-secondary); }
+        .cta-section { text-align: center; margin-top: 4rem; }
+        .footer { background: var(--text-primary); color: var(--text-white); padding: 4rem 2rem 2rem; text-align: center; }
+        .footer-logo { font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; }
+        .footer-tagline { margin-bottom: 2rem; opacity: 0.8; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <a href="{{ url_for('home') }}" class="logo">
+                <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="YoppyChat Logo" class="logo-img">
+            </a>
+            <a href="{{ url_for('channel') }}" class="cta-button">Try Free</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="about-section">
+            <div class="container">
+                <h1>About <span class="highlight">YoppyChat AI</span></h1>
+                <p class="subtitle">Bridging the gap between creators and their communities through conversation.</p>
+
+                <h2>Our Mission</h2>
+                <p>
+                    Every YouTube creator builds a universe of knowledge, stories, and personality through their videos. But as an audience grows, the ability for personal interaction shrinks. Questions get lost in comments, and valuable insights remain buried in hours of content. Our mission is to unlock that universe. We believe every fan should be able to instantly tap into a creator's wisdom, and every creator should be able to engage their community at scale, even when they're offline.
+                </p>
+
+                <h2>The Problem We Solve</h2>
+                <p>
+                    Creators are experts, entertainers, and teachers. Their viewers are curious, engaged, and eager to learn more. The comment section is a chaotic place for deep interaction, and finding a specific piece of information can mean scrubbing through dozens of videos. This creates a bottleneck, limiting the depth of engagement and leaving the community's curiosity unfulfilled.
+                </p>
+
+                <h2>Our Solution</h2>
+                <p>
+                    YoppyChat transforms a creator's entire video library into a smart, conversational AI that embodies their unique persona. It's not just a search engine; it's a digital extension of the creator. By training on every transcript, the AI learns their tone, opinions, and expertise. This allows fans to ask complex questions and receive nuanced answers that sound authentic, complete with source links to the exact moments in the videos.
+                </p>
+
+                <div class="cta-section">
+                    <a href="{{ url_for('channel') }}" class="cta-button" style="font-size: 1.2rem; padding: 1rem 2.5rem;">Create Your AI Assistant</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-logo">    <a href="{{ url_for('home') }}" class="logo">
+
+        <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="YoppyChat Logo" class="logo-img logo-dark">
+    </a></div>
+        <p class="footer-tagline">Your conversations—and your impact—keep going long after the video ends.</p>
+    </footer>
+
+</body>
+</html>

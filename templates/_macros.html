@@ -1,0 +1,39 @@
+{# This macro renders the channel card used on the main dashboard page #}
+{% macro render_dashboard_channel_card(channel, channel_name) %}
+<div class="channel-card" data-channel-id="{{ channel.id }}">
+    {# --- THIS LINE IS FIXED --- #}
+    <a href="{{ url_for('ask', channel_name=channel_name) }}" class="channel-card-link">
+        {% if channel.channel_thumbnail %}
+        <img src="{{ channel.channel_thumbnail }}" alt="{{ channel_name }}" class="channel-card-avatar">
+        {% else %}
+        <span class="channel-card-avatar-placeholder">{{ channel_name[0] | upper }}</span>
+        {% endif %}
+        <div class="channel-card-details">
+            <div class="channel-card-title">{{ channel_name }}</div>
+        </div>
+    </a>
+    <button class="delete-channel-btn" onclick="confirmDeleteChannel('{{ channel.id }}', '{{ channel_name }}', this)" aria-label="Delete {{ channel_name }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    </button>
+</div>
+{% endmacro %}
+
+
+{# This macro renders the channel item used in the sidebar #}
+{% macro render_sidebar_channel_item(channel, channel_name) %}
+<div class="channel-item-wrapper {% if request.endpoint == 'ask' and request.view_args.get('channel_name') == channel_name %}active{% endif %}" data-channel-id="{{ channel.id }}">
+    {# --- THIS LINE IS FIXED --- #}
+    <a href="{{ url_for('ask', channel_name=channel_name) }}" class="channel-link">
+        {% if channel.channel_thumbnail %}<img src="{{ channel.channel_thumbnail }}" alt="{{ channel_name }}" class="channel-avatar">{% endif %}
+        <span class="channel-name">{{ channel_name }}</span>
+    </a>
+    <button class="delete-btn" onclick="confirmDeleteChannel('{{ channel.id }}', '{{ channel_name }}', this)" aria-label="Delete {{ channel_name }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    </button>
+</div>
+{% endmacro %}
+
+{# Pricing card macro remains unchanged #}
+{% macro render_pricing_card(plan_details, current_plan=None, is_modal=False) %}
+    {# ... (no changes needed in this macro) ... #}
+{% endmacro %}

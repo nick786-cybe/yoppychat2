@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Chat with Any YouTuber AI | YoppyChat - Talk to Your Favorite Creator 24/7</title>
+    <meta name="description" content="Turn any YouTube channel into an AI chatbot. Chat with your favorite creators anytime. Get personalized answers in their voice. Free to start.">
+    
+    <meta name="keywords" content="chat with YouTube creator, talk to YouTuber AI, AI version of YouTuber, YouTube channel chatbot, creator AI assistant, AI chatbot, YouTube AI, talk to YouTuber, AI persona, conversational AI">
+    
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://yoppychat.softvait.in"> <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+
+    <meta property="og:title" content="Chat with Any YouTuber AI | YoppyChat">
+    <meta property="og:description" content="Turn any YouTube channel into an AI chatbot. Chat with your favorite creators anytime and get answers in their authentic voice.">
+    <meta property="og:image" content="{{ url_for('static', filename='images/logo/primiry__logo.png', _external=True) }}">
+    <meta property="og:url" content="https://yoppychat.softvait.in">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Chat with Any YouTuber AI | YoppyChat">
+    <meta name="twitter:description" content="Chat directly with an AI clone of your favorite YouTuber, powered by their video content.">
+    <meta name="twitter:image" content="{{ url_for('static', filename='images/logo/primiry__logo.png', _external=True) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Onest:wght@700;800&display=swap" rel="stylesheet">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "YoppyChat",
+          "applicationCategory": "AI Chatbot",
+          "operatingSystem": "Web-based",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR"
+          },
+          "description": "YoppyChat turns any YouTube channel into a smart, conversational AI assistant, allowing fans to chat with an AI version of their favorite creator.",
+          "mainEntityOfPage": {
+             "@type": "WebPage",
+             "@id": "https://yoppychat.softvait.in"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What app lets me chat with any YouTuber?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "YoppyChat is an app that lets you chat with an AI version of any YouTuber. It uses their entire video library to create an AI chatbot that answers questions in their voice and style."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How can I talk to my favorite YouTube creator?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "With YoppyChat, you can talk to an AI clone of your favorite YouTube creator 24/7. Simply enter the channel URL, and our platform creates a conversational AI you can interact with directly."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is there an AI that acts like YouTubers?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, YoppyChat specializes in creating AI personas that act like YouTubers. The AI analyzes a creator's content to replicate their personality, knowledge, and communication style, providing an authentic chat experience."
+              }
+            },
+             {
+              "@type": "Question",
+              "name": "How to create an AI version of a YouTuber?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "You can create an AI version of a YouTuber using YoppyChat. Just provide the YouTube channel link, and our service automatically processes their videos to build a knowledgeable AI chatbot that you can talk to instantly."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "LocalBusiness",
+          "name": "YoppyChat",
+          "image": "{{ url_for('static', filename='images/logo/primiry__logo.png', _external=True) }}",
+          "@id": "https://yoppychat.softvait.in",
+          "url": "https://yoppychat.softvait.in/",
+          "telephone": "+91-8081495964", // Add your business phone number
+          "priceRange": "Free to Start",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "yashoda nagar",
+            "addressLocality": "Kanpur",
+            "postalCode": "208011",
+            "addressRegion": "UP",
+            "addressCountry": "IN"
+          }
+        }
+      ]
+    }
+    </script>
+    <style>
+        :root {
+            --primary-bg: #fdf8f3; --secondary-bg: #ffffff; --surface-light: #ffffff;
+            --surface-medium: #fef7f0; --surface-dark: #f4ede4; --neutral-50: #fdf8f3;
+            --neutral-100: #f8f1e8; --neutral-200: #f0e6d6; --neutral-300: #e6d5c1;
+            --neutral-400: #c4a882; --neutral-500: #a08660; --neutral-600: #7d6847;
+            --neutral-700: #5a4a32; --neutral-800: #3d3024; --neutral-900: #2a1f16;
+            --accent-primary: #ff9a56; --accent-secondary: #ff8c42;
+            --accent-purple: #9333ea; --accent-purple-light: #a855f7;
+            --accent-success: #4caf50; --accent-error: #e57373;
+            --text-primary: #2a1f16; --text-secondary: #5a4a32;
+            --text-muted: #7d6847; --text-white: #ffffff;
+            --shadow-xs: 0 1px 3px 0 rgba(160, 134, 96, 0.08);
+            --shadow-sm: 0 2px 6px 0 rgba(160, 134, 96, 0.12), 0 2px 4px 0 rgba(160, 134, 96, 0.06);
+            --shadow-md: 0 4px 12px 0 rgba(160, 134, 96, 0.15), 0 2px 6px 0 rgba(160, 134, 96, 0.08);
+            --shadow-lg: 0 8px 20px 0 rgba(160, 134, 96, 0.18), 0 4px 12px 0 rgba(160, 134, 96, 0.10);
+            --shadow-xl: 0 12px 28px 0 rgba(160, 134, 96, 0.20), 0 6px 16px 0 rgba(160, 134, 96, 0.12);
+            --spacing-xs: 0.25rem; --spacing-sm: 0.5rem; --spacing-md: 1rem;
+            --spacing-lg: 1.5rem; --spacing-xl: 2rem; --spacing-2xl: 3rem;
+            --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+            --radius-xl: 20px; --radius-full: 9999px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Figtree', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-md); /* Adjusted padding for mobile */
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: rgba(253, 248, 243, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid transparent;
+            z-index: 1000;
+            transition: all 0.3s ease-in-out;
+        }
+        .header.scrolled {
+            background: rgba(253, 248, 243, 0.95);
+            border-bottom-color: var(--neutral-200);
+            box-shadow: var(--shadow-md);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+        .logo {
+            font-size: 1.25rem; /* Slightly smaller logo for better fit */
+            font-weight: 800;
+            color: var(--text-primary); text-decoration: none;
+            flex-shrink: 0; /* Prevent logo from shrinking */
+        }
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+        .nav-links a {
+            color: var(--text-secondary); text-decoration: none;
+            font-weight: 500; transition: color 0.3s ease;
+        }
+        .nav-links a:hover { color: var(--accent-primary); }
+        .cta-button {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--text-white); padding: 0.6rem 1.2rem; /* Smaller button */
+            border: none; border-radius: var(--radius-full);
+            font-weight: 600; text-decoration: none;
+            font-size: 0.9rem; /* Smaller font size */
+            transition: all 0.3s ease; box-shadow: var(--shadow-sm);
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+        .cta-button:hover {
+            transform: translateY(-2px); box-shadow: var(--shadow-lg);
+        }
+        .nav-actions {
+             display: flex;
+             align-items: center;
+             gap: 0.5rem; /* Reduced gap */
+        }
+        .menu-toggle { display: none; cursor: pointer; }
+        .menu-toggle .bar {
+            display: block; width: 25px; height: 3px;
+            margin: 5px auto; transition: all 0.3s ease-in-out;
+            background-color: var(--text-primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 10rem 2rem 5rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, var(--surface-medium) 100%);
+            position: relative; overflow: hidden;
+        }
+        .hero h1 {
+             font-family: 'Onest', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 800;
+            line-height: 1.2;
+            color: #3A2E2A;
+            margin-bottom: 1.5rem;
+        }
+        .hero h1 .highlight {
+            color: #F97316;
+        }
+        .hero-subtitle {
+            font-size: 1.35rem; color: var(--text-secondary);
+            margin-bottom: 2rem; font-weight: 500; max-width: 750px; margin-inline: auto;
+        }
+        .hero-description {
+            font-size: 1.1rem; color: var(--text-muted);
+            margin-bottom: 3rem; max-width: 700px; margin-inline: auto;
+        }
+        .hero-buttons {
+            display: flex; gap: 1rem;
+            justify-content: center; flex-wrap: wrap;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--text-white); padding: 1rem 2rem;
+            border-radius: var(--radius-full); font-weight: 600;
+            font-size: 1.1rem; transition: all 0.3s ease;
+            box-shadow: var(--shadow-md); text-decoration: none;
+            display: inline-block; border: none; cursor: pointer;
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: var(--shadow-xl); }
+        .btn-secondary {
+            background: var(--surface-light); color: var(--text-primary);
+            padding: 1rem 2rem; border: 2px solid var(--neutral-300);
+            border-radius: var(--radius-full); font-weight: 600; font-size: 1.1rem;
+            transition: all 0.3s ease; text-decoration: none; display: inline-block; cursor: pointer;
+        }
+        .btn-secondary:hover {
+            background: var(--accent-primary); color: var(--text-white);
+            border-color: var(--accent-primary); transform: translateY(-3px);
+        }
+        .audience-tags {
+            display: flex; gap: 0.75rem; justify-content: center;
+            flex-wrap: wrap; margin-top: 3rem;
+        }
+        .audience-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--surface-light); padding: 0.6rem 1.1rem;
+            border-radius: var(--radius-full); border: 1px solid var(--neutral-200);
+            font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+        .audience-tag svg {
+            width: 16px; height: 16px;
+        }
+        .audience-tag:hover {
+            border-color: var(--accent-primary); background: var(--accent-primary);
+            color: var(--text-white); transform: translateY(-2px);
+        }
+
+        /* General Section Styling */
+        .section {
+            padding: 5rem 0;
+        }
+        .section-title {
+            font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 800;
+            margin-bottom: 1.5rem; text-align: center; color: var(--text-primary);
+        }
+        .section-subtitle {
+            font-size: 1.2rem; color: var(--text-secondary); text-align: center;
+            max-width: 700px; margin: 0 auto 3rem auto;
+        }
+
+        /* How It Works Section */
+        #how-it-works { background-color: var(--surface-light); }
+        .how-it-works-grid {
+            display: grid;
+            gap: 2rem;
+            align-items: center;
+        }
+        .highlight-purple {
+            background: linear-gradient(to right, var(--accent-purple-light), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .feature-list { display: flex; flex-direction: column; gap: 1rem; }
+        .feature-item {
+            display: flex; align-items: flex-start; gap: 1rem;
+            padding: 1.25rem; border-radius: var(--radius-lg);
+            border: 1px solid var(--neutral-200);
+            transition: all 0.3s ease;
+            background-color: var(--secondary-bg);
+        }
+        .feature-item:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--neutral-200);
+        }
+        .feature-item.highlight {
+            border-color: var(--accent-purple);
+            background-color: #fbf5ff;
+            box-shadow: var(--shadow-lg);
+        }
+        .feature-item-icon { flex-shrink: 0; color: var(--accent-purple); }
+        .feature-item-icon.default { color: var(--text-muted); }
+        .feature-item h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--text-primary); }
+        .feature-item p { color: var(--text-secondary); line-height: 1.6; font-size: 0.95rem; }
+        .chat-demo {
+            background: var(--surface-light); border-radius: var(--radius-xl);
+            padding: 1.5rem; box-shadow: var(--shadow-lg); text-align: left;
+            border: 1px solid var(--neutral-200);
+            cursor: pointer;
+        }
+        .chat-message {
+            background: var(--surface-medium); padding: 1rem;
+            border-radius: var(--radius-md); margin-bottom: 1rem;
+        }
+        .message-user { color: var(--text-secondary); font-weight: 700; margin-bottom: 0.5rem; }
+        .message-ai { color: var(--accent-primary); font-weight: 700; margin-bottom: 0.5rem; }
+        .message-content { color: var(--text-primary); font-size: 0.95rem; line-height: 1.5; }
+        .demo-prompt { color: var(--text-muted); margin-top: 1rem; text-align: center; font-style: italic; }
+
+        /* Benefits Section */
+        .benefits-grid {
+            display: grid; gap: 2rem; margin-top: 3rem;
+        }
+        .benefit-section {
+            background: var(--surface-light); padding: 2rem;
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+        }
+        .benefit-title {
+            font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem;
+            color: var(--text-primary); display: flex; align-items: center; gap: 1rem;
+        }
+        .benefit-list { list-style: none; padding: 0; }
+        .benefit-item {
+            display: flex; align-items: flex-start; padding: 0.75rem 0;
+            border-bottom: 1px solid var(--neutral-200); color: var(--text-secondary);
+        }
+        .benefit-item:last-child { border-bottom: none; }
+        .benefit-item .icon { color: var(--accent-success); margin-right: 0.75rem; flex-shrink: 0; }
+        .highlight-benefits {
+            background: var(--surface-medium); padding: 1.5rem;
+            border-radius: var(--radius-md); margin-top: 1.5rem;
+            text-align: center; border: 1px solid var(--neutral-200);
+        }
+        .highlight-benefits h4 {
+            color: var(--accent-primary); font-weight: 700; font-size: 1.1rem;
+        }
+
+        /* Security Section */
+        .security-section { background: var(--neutral-100); }
+        .security-grid {
+            display: grid; gap: 1.5rem; margin-top: 3rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+        .security-card {
+            background: var(--surface-light); padding: 2rem;
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease; text-align: center;
+        }
+        .security-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+        .security-icon { margin-bottom: 1rem; color: var(--accent-primary); }
+        .security-title { font-weight: 700; margin-bottom: 0.5rem; font-size: 1.1rem; color: var(--text-primary); }
+        .security-description { color: var(--text-secondary); font-size: 0.95rem; }
+
+        /* Pricing Section */
+        #pricing { background-color: var(--primary-bg); }
+        .pricing-grid {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: 1fr;
+            align-items: stretch; /* Make cards same height */
+        }
+        .pricing-card {
+            background: var(--surface-light);
+            padding: 2.5rem 2rem;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--neutral-200);
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex; /* Flexbox for alignment */
+            flex-direction: column;
+        }
+        .pricing-card.featured {
+            border: 2px solid var(--accent-primary);
+            box-shadow: var(--shadow-xl);
+            background-color: var(--surface-medium);
+        }
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+        }
+        .popular-badge {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--accent-primary);
+            color: var(--text-white);
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0.3rem 0.8rem;
+            border-radius: var(--radius-full);
+            letter-spacing: 0.5px;
+        }
+        .pricing-card h4 { font-size: 1.5rem; font-weight: 700; }
+        .pricing-card .price { font-size: 2.5rem; font-weight: 800; margin: 1rem 0; }
+        .pricing-card .price-featured { font-size: 3rem; }
+        .pricing-card .price span { font-size: 1rem; font-weight: 500; color: var(--text-muted); }
+        .pricing-features { flex-grow: 1; list-style: none; margin: 2rem 0; display: flex; flex-direction: column; gap: 1rem; }
+        .pricing-features li { display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); }
+        .pricing-features .icon { color: var(--accent-success); }
+        .btn-pricing {
+            display: block; width: 100%; text-align: center;
+            padding: 0.9rem 1.5rem; border-radius: var(--radius-md);
+            font-weight: 600; text-decoration: none; transition: all 0.3s ease;
+            margin-top: auto; /* Push button to bottom */
+        }
+        .btn-pricing-neutral {
+            background-color: var(--neutral-200); color: var(--text-primary);
+        }
+        .btn-pricing-neutral:hover { background-color: var(--neutral-300); }
+        .btn-pricing-accent {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--text-white);
+            padding: 1.1rem 1.5rem; /* Make it slightly bigger */
+        }
+        .btn-pricing-accent:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 5rem 2rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            text-align: center; color: var(--text-white);
+        }
+        .cta-content { max-width: 700px; margin: 0 auto; }
+        .cta-title { font-size: 2rem; font-weight: 800; margin-bottom: 1rem; }
+        .cta-subtitle { font-size: 1.1rem; margin-bottom: 2rem; opacity: 0.95; }
+        .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .btn-white {
+            background: var(--text-white); color: var(--accent-primary); padding: 1rem 2rem;
+            border: none; border-radius: var(--radius-full); font-weight: 700; font-size: 1.1rem;
+            cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-block;
+        }
+        .btn-white:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
+        /* FAQ Section */
+        .faq-container { max-width: 800px; margin: 0 auto; }
+        .faq-item {
+            background: var(--surface-medium); margin-bottom: 1rem;
+            border-radius: var(--radius-md); border: 1px solid var(--neutral-200);
+            overflow: hidden; transition: background-color 0.3s ease;
+        }
+        .faq-item.open { background-color: var(--surface-light); }
+        .faq-question {
+            width: 100%; border: none; background: transparent; text-align: left;
+            padding: 1.25rem; font-weight: 600; font-size: 1rem; color: var(--text-primary);
+            cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center;
+        }
+        .faq-toggle {
+            font-size: 1.5rem; color: var(--accent-primary);
+            transition: transform 0.3s ease;
+        }
+        .faq-item.open .faq-toggle { transform: rotate(45deg); }
+        .faq-answer {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease;
+        }
+        .faq-answer p {
+            padding: 0 1.25rem 1.25rem; color: var(--text-secondary);
+            line-height: 1.7; font-size: 0.95rem;
+        }
+        .faq-item.open .faq-answer { max-height: 200px; }
+
+        /* Footer */
+        .footer {
+            background: var(--text-primary); color: var(--text-white);
+            padding: 4rem 2rem 2rem; text-align: center;
+        }
+        .footer-logo { font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; }
+        .footer-tagline { margin-bottom: 2rem; opacity: 0.8; font-size: 1.1rem; }
+        .footer-links {
+            display: flex; gap: 1.5rem; justify-content: center;
+            flex-wrap: wrap; margin-bottom: 3rem;
+        }
+        .footer-links a { color: var(--text-white); text-decoration: none; opacity: 0.8; transition: opacity 0.3s ease; }
+        .footer-links a:hover { opacity: 1; }
+        .footer-copyright { opacity: 0.6; font-size: 0.9rem; }
+
+        /* Responsive Styles */
+        @media (min-width: 1024px) {
+            .how-it-works-grid { grid-template-columns: repeat(2, 1fr); }
+            .benefits-grid { grid-template-columns: repeat(2, 1fr); }
+            .pricing-grid { grid-template-columns: repeat(3, 1fr); }
+            .logo { font-size: 1.5rem; }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                position: fixed; top: 70px; right: 0;
+                height: calc(100vh - 70px); width: 100%;
+                background: var(--primary-bg);
+                flex-direction: column; align-items: center;
+                justify-content: center; gap: 2.5rem;
+                transform: translateX(100%);
+                transition: transform 0.3s ease-in-out;
+            }
+            .nav-links.active { transform: translateX(0); }
+            .nav-links a { font-size: 1.5rem; }
+            .menu-toggle { display: block; z-index: 1001; }
+            .menu-toggle.active .bar:nth-child(2) { opacity: 0; }
+            .menu-toggle.active .bar:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+            .menu-toggle.active .bar:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+            
+            .hero { padding: 8rem 1rem 4rem; }
+            .hero-subtitle { font-size: 1.1rem; }
+            .hero-description { font-size: 0.95rem; }
+            .hero-buttons, .cta-buttons { flex-direction: column; align-items: stretch; }
+            
+            .section { padding: 4rem 0; }
+            .pricing-card.featured { transform: scale(1); }
+            .pricing-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Animations */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        .scroll-reveal.revealed { opacity: 1; transform: translateY(0); }
+        /* Dynamic Logo Styles */
+.logo-img { height: 52px; width: auto; vertical-align: middle; }
+.logo-dark { display: none; }
+.logo-light { display: block; }
+html[data-theme='dark'] .logo-dark { display: block; }
+html[data-theme='dark'] .logo-light { display: none; }
+html[data-theme='dark'] {
+    /* Defines all the base color variables for the dark theme */
+    --primary-bg: #121212;
+    --secondary-bg: #1e1e1e;
+    --surface-light: #2c2c2c;
+    --surface-medium: #3a3a3a;
+    --surface-dark: #484848;
+    --neutral-100: #2c2c2c;
+    --neutral-200: #3a3a3a;
+    --neutral-300: #6c6c6c;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b3b3b3;
+    --text-muted: #8e8e8e;
+
+    /* --- Fixes for Specific Landing Page Elements --- */
+
+    /* Header background and nav link color */
+    .header {
+        background: rgba(30, 30, 30, 0.8);
+        border-bottom-color: var(--surface-medium);
+    }
+    .nav-links a {
+        color: var(--text-secondary);
+    }
+
+    /* Hero title text color */
+    .hero h1 {
+        color: var(--text-primary);
+    }
+
+    /* Highlighted feature box in "How it Works" */
+    .feature-item.highlight {
+        background-color: rgba(147, 51, 234, 0.1);
+        border-color: var(--accent-purple-light);
+    }
+
+    /* Neutral pricing button ("Choose Pro") text color */
+    .btn-pricing-neutral {
+        color: var(--text-primary);
+    }
+
+    /* Footer background and text color */
+    .footer {
+        background: #1e1e1e; /* A dark surface color */
+        color: var(--text-secondary);
+    }
+    .footer-logo, .footer-links a, .footer-copyright {
+        color: var(--text-secondary);
+    }
+    .footer-links a:hover {
+        color: var(--text-white);
+    }
+}
+
+/* Header Theme Toggle Button */
+.theme-toggle-btn {
+    background: none; border: none; cursor: pointer; padding: 8px;
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; color: var(--text-secondary);
+}
+.theme-toggle-btn:hover { background-color: var(--surface-medium); }
+.theme-toggle-btn .moon-icon { display: none; }
+html[data-theme='dark'] .theme-toggle-btn .sun-icon { display: none; }
+html[data-theme='dark'] .theme-toggle-btn .moon-icon { display: block; }
+    </style>
+    <script>
+    (function() {
+        const theme = localStorage.getItem('theme') || 'light';
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    })();
+</script>
+
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+<nav class="nav">
+    <a href="{{ url_for('home') }}" class="logo">
+        <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="YoppyChat Logo" class="logo-img logo-light">
+        <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="YoppyChat Logo" class="logo-img logo-dark">
+    </a>
+    <ul class="nav-links">
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#benefits">Benefits</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="/about">About us</a></li>
+    </ul>
+    <div class="nav-actions">
+         <a href="{{ url_for('channel') }}" class="cta-button">Try Free</a>
+         <button id="landing-theme-toggle" class="theme-toggle-btn" title="Toggle theme">
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+         </button>
+         <div class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+    </div>
+</nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Chat with Your Favorite Creator — <span class="highlight">Anytime, Anywhere.</span></h1>
+                <p class="hero-subtitle">What if your fans could ask you anything—and receive real, style-rich answers—even when you’re offline?</p>
+                <p class="hero-description"><strong>YoppyChat</strong> turns YouTube channels into smart, conversational AI assistants. Whether you're a viewer trying to learn, or a creator wanting to engage your audience 24/7 — we make it possible.</p>
+                <div class="hero-buttons">
+                    <a href="{{ url_for('channel') }}" class="btn-primary">Try YoppyChat</a>
+                    <a href="{{ url_for('channel') }}" class="btn-secondary">Add Your Channel</a>
+                </div>
+                <div class="audience-tags">
+                    <div class="audience-tag">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                        <span>Content Creators</span>
+                    </div>
+                    <div class="audience-tag">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>Students & Learners</span>
+                    </div>
+                    <div class="audience-tag">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="5" y1="12" x2="1" y2="12"></line><line x1="23" y1="12" x2="19" y2="12"></line><circle cx="12" cy="12" r="7"></circle></svg>
+                        <span>Marketers & Analysts</span>
+                    </div>
+                    <div class="audience-tag">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                        <span>Curious Fans</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section scroll-reveal" id="how-it-works">
+            <div class="container">
+                <h2 class="section-title">Your Voice. Your Story. Their Answers.</h2>
+                <p class="section-subtitle">YoppyChat doesn't just fetch facts; it talks like you. Using your transcripts, it learns your tone, phrasing, and wisdom to respond exactly how you would.</p>
+                
+                <div class="how-it-works-grid">
+                    <div class="feature-list">
+                        <div class="feature-item highlight">
+                            <div class="feature-item-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a2 2 0 1 1 4 0v1a1 1 0 0 0 1 1h3a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1a2 2 0 1 0 0 4h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-3a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0v-1a1 1 0 0 0-1-1H7a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a2 2 0 1 0 0-4H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 0 1-1V4z"></path></svg>
+                            </div>
+                            <div>
+                                <h4>Replicate Your Exact Methodology</h4>
+                                <p>Our AI learns your unique style, opinions, and tone to answer questions just as you would, making it a true extension of your brand.</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-item">
+                            <div class="feature-item-icon default">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"></path></svg>
+                            </div>
+                            <div>
+                                <h4>Keep Your Community Engaged 24/7</h4>
+                                <p>Automate answers to common questions, freeing you to focus on more meaningful interactions and content creation.</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-item">
+                           <div class="feature-item-icon default">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                           </div>
+                           <div>
+                               <h4>Discover Your Next Viral Idea</h4>
+                               <p>Use insights from your community's most-asked questions to find the topics they're desperate for you to cover next.</p>
+                           </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-demo" id="interactive-demo">
+                        <div class="chat-message">
+                            <div class="message-user">You:</div>
+                            <div class="message-content">"What camera does MKBHD recommend for beginners?"</div>
+                        </div>
+                        <div class="chat-message">
+                            <div class="message-ai">YoppyChat:</div>
+                            <div class="message-content">Based on his "Best Budget Cameras 2024" video, MKBHD recommends the Sony A6000 for beginners. He mentions it has great image quality, good autofocus, and is very user-friendly. <br><br>📹 <a href="#" style="color: var(--accent-primary);">Watch at 3:42</a></div>
+                        </div>
+                         <p class="demo-prompt">💡 Click me to see more examples</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section benefits scroll-reveal" id="benefits">
+            <div class="container">
+                <h2 class="section-title">A Win-Win for Creators & Viewers</h2>
+                <div class="benefits-grid">
+                    <div class="benefit-section">
+                        <h3 class="benefit-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            For Viewers & Fans
+                        </h3>
+                        <ul class="benefit-list">
+                            <li class="benefit-item">
+                                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                                Get clear, accurate answers in your creator’s voice—without scouring old videos.
+                            </li>
+                            <li class="benefit-item">
+                                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                                Explore topics and gems you may have missed across their content library.
+                            </li>
+                            <li class="benefit-item">
+                                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                                Spark deeper connection—even when the creator’s offline.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="benefit-section">
+                        <h3 class="benefit-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                             For Creators
+                        </h3>
+                        <ul class="benefit-list">
+                            <li class="benefit-item">
+                                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                                Turn your videos into a conversational AI that stays on-brand and always engages.
+                            </li>
+                            <li class="benefit-item">
+                                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                                Automate FAQs, freeing you to focus on content and creativity.
+                            </li>
+                            <li class="benefit-item">
+                                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>
+                                Gain powerful insight—see what your audience really wants, straight from their questions.
+                            </li>
+                        </ul>
+                         <div class="highlight-benefits">
+                            <h4>✅ Save time. ✅ Increase engagement. ✅ Monetize better.</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section security-section scroll-reveal">
+            <div class="container">
+                <h2 class="section-title">Secure, Private & Creator-First</h2>
+                 <p class="section-subtitle">Built with trust and performance at the core.</p>
+                <div class="security-grid">
+                    <div class="security-card">
+                        <div class="security-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 0 0 10-10H2a10 10 0 0 0 10 10z"></path><path d="M12 2a10 10 0 0 0-10 10c0 4.42 3.58 8 8 8s8-3.58 8-8c0-4.42-3.58-8-8-8zm0 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"></path></svg></div>
+                        <h4 class="security-title">Leading AI Models</h4>
+                        <p class="security-description">Powered by state-of-the-art LLMs for accurate, contextual, and safe responses.</p>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+                        <h4 class="security-title">Private & Secure</h4>
+                        <p class="security-description">Your data is yours. We ensure private, secure storage and full GDPR compliance.</p>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg></div>
+                        <h4 class="security-title">Creator-Friendly</h4>
+                        <p class="security-description">We deeply respect content creators and their intellectual property. You are always in control.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section scroll-reveal" id="pricing">
+            <div class="container">
+                <h2 class="section-title">Plans That Grow with You</h2>
+                <p class="section-subtitle">Choose a plan that grows with your community. Start for free.</p>
+                <div class="pricing-grid">
+                    <div class="pricing-card">
+                        <h4>Free</h4>
+                        <p class="text-muted">Explore YoppyChat on a small scale. Get 50 answers and test the magic.</p>
+                        <p class="price">₹0 <span>/ month</span></p>
+                        <a href="{{ url_for('channel') }}" class="btn-pricing btn-pricing-neutral">Get Started</a>
+                        <ul class="pricing-features">
+                            <li><span class="icon">✓</span>3 Channel</li>
+                            <!-- <li><span class="icon">✓</span>Max 50 latest video Knowledge/channel</li> -->
+                            <li><span class="icon">✓</span>50 queries/month</li>
+                            <li><span class="icon">✓</span>Manual Refresh</li>
+                        </ul>
+                    </div>
+                    <div class="pricing-card featured">
+                        <span class="popular-badge">MOST POPULAR</span>
+                        <h4>Creator</h4>
+                        <p class="text-muted">Build deeper community engagement with more content, faster answers, and your own persona-driven bot.</p>
+                        <p class="price price-featured">₹299 <span>/ month</span></p>
+                        <a href="{{ url_for('channel') }}" class="btn-pricing btn-pricing-accent">Choose Creator</a>
+                        <ul class="pricing-features">
+                            <li><span class="icon">✓</span>10 Channels</li>
+                            <!-- <li><span class="icon">✓</span>Max 250 latest video Knowledge/channel</li> -->
+                            <li><span class="icon">✓</span>2,500 queries/month</li>
+                            <li><span class="icon">✓</span>Auto Weekly Refresh</li>
+                            <li><span class="icon">✓</span>Faster Responses</li>
+                            <li><span class="icon">✓</span>Access to Your Persona bot for your community</li>
+                        </ul>
+                    </div>
+                    <div class="pricing-card">
+                        <h4>Pro</h4>
+                        <p class="text-muted">Full-scale, branded AI powered by your entire YouTube library—fully customizable and white-labeled.</p>
+                        <p class="price">₹1,499 <span>/ month</span></p>
+                        <a href="{{ url_for('channel') }}" class="btn-pricing btn-pricing-neutral">Choose Pro</a>
+                        <ul class="pricing-features">
+                             <li><span class="icon">✓</span>Unlimited Channels</li>
+                            <li><span class="icon">✓</span>Unlimited video knowledge/channel</li>
+                            <li><span class="icon">✓</span>10,000 queries/month</li>
+                            <li><span class="icon">✓</span>Faster Responses</li>
+                            <li><span class="icon">✓</span><strong>White-labeled channel knowledge bot (custom name & profile pic)</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>  
+
+        <section class="section scroll-reveal" id="faq">
+            <div class="faq-container">
+                <h2 class="section-title">Frequently Asked Questions</h2>
+
+                <div class="faq-item">
+                    <button class="faq-question" aria-expanded="false">
+                        What app lets me chat with any YouTuber?
+                        <span class="faq-toggle">+</span>
+                    </button>
+                    <div class="faq-answer">
+                       <p><strong>YoppyChat</strong> is the premier app designed to let you chat with an AI version of any YouTuber. Our AI uses the creator's entire channel to create a smart chatbot that accurately answers questions in their unique voice and style.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question" aria-expanded="false">
+                        How can I talk to my favorite YouTube creator?
+                        <span class="faq-toggle">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>YoppyChat provides the next best thing to talking to them live. You can ask an AI clone of your favorite creator questions 24/7 and get instant, intelligent answers that feel authentic to their personality and knowledge.</p>
+                    </div>
+                </div>
+
+                 <div class="faq-item">
+                    <button class="faq-question" aria-expanded="false">
+                        Is there an AI that acts like YouTubers?
+                        <span class="faq-toggle">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Yes! YoppyChat is specifically built to create AI personas that act like YouTubers. Unlike generic chatbots, our AI studies hours of video content to replicate a creator's specific tone, opinions, and expertise.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question" aria-expanded="false">
+                        What's the best YouTube creator chatbot?
+                        <span class="faq-toggle">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>YoppyChat aims to be the best because it creates a channel-wide AI persona, not a bot that only knows about one video. This gives you a far more comprehensive and authentic conversational experience compared to other tools.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <button class="faq-question" aria-expanded="false">
+                        How do you create an AI version of a YouTuber?
+                        <span class="faq-toggle">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Our platform learn from all the video from a YouTube channel. We then use advanced language models to build a complete knowledge base and personality matrix, resulting in an AI clone of the creator you can chat with instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">    <a href="{{ url_for('home') }}" class="logo">
+        <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="YoppyChat Logo" class="logo-img logo-dark">
+    </a></div>
+                <p class="footer-tagline">Your conversations—and your impact—keep going long after the video ends.</p>
+                <div class="footer-links">
+                    <a href="#how-it-works">How It Works</a>
+                    <a href="#benefits">Benefits</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="#faq">FAQ</a>
+                    <a href="{{ url_for('privacy') }}">Privacy</a>
+                    <a href="{{ url_for('terms') }}">Terms</a>
+                </div>
+                <div class="footer-copyright">
+                    © 2024 - 2025 YoppyChat. All rights reserved.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+    const themeToggle = document.getElementById('landing-theme-toggle');
+    if (themeToggle) {
+        const sunIcon = themeToggle.querySelector('.sun-icon');
+        const moonIcon = themeToggle.querySelector('.moon-icon');
+
+        const updateThemeUI = (theme) => {
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                if (sunIcon) sunIcon.style.display = 'none';
+                if (moonIcon) moonIcon.style.display = 'block';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                if (sunIcon) sunIcon.style.display = 'block';
+                if (moonIcon) moonIcon.style.display = 'none';
+            }
+        };
+
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        updateThemeUI(currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            updateThemeUI(newTheme);
+        });
+    }
+            // --- Header Scroll Effect ---
+            const header = document.querySelector('.header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+
+            // --- Mobile Menu Toggle ---
+            const menuToggle = document.getElementById('menu-toggle');
+            const navLinks = document.querySelector('.nav-links');
+            menuToggle.addEventListener('click', () => {
+                menuToggle.classList.toggle('active');
+                navLinks.classList.toggle('active');
+                const isExpanded = menuToggle.getAttribute('aria-expanded') === 'true';
+                menuToggle.setAttribute('aria-expanded', !isExpanded);
+            });
+            // Close menu when a link is clicked
+            navLinks.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                     menuToggle.classList.remove('active');
+                     navLinks.classList.remove('active');
+                     menuToggle.setAttribute('aria-expanded', 'false');
+                });
+            });
+
+
+            // --- Scroll Reveal Animation ---
+            const revealOnScroll = () => {
+                const reveals = document.querySelectorAll('.scroll-reveal');
+                const windowHeight = window.innerHeight;
+                reveals.forEach(reveal => {
+                    const elementTop = reveal.getBoundingClientRect().top;
+                    const elementVisible = 100;
+                    if (elementTop < windowHeight - elementVisible) {
+                        reveal.classList.add('revealed');
+                    }
+                });
+            };
+            window.addEventListener('scroll', revealOnScroll);
+            revealOnScroll(); // Initial check
+
+            // --- FAQ Toggle ---
+            const faqItems = document.querySelectorAll('.faq-item');
+            faqItems.forEach(item => {
+                const button = item.querySelector('.faq-question');
+                
+                button.addEventListener('click', () => {
+                    const isOpened = item.classList.contains('open');
+                    item.classList.toggle('open');
+                    button.setAttribute('aria-expanded', !isOpened);
+                });
+            });
+
+            // --- Interactive Demo ---
+            const demoContainer = document.getElementById('interactive-demo');
+            if (demoContainer) {
+                let demoStep = 0;
+                const demoMessages = [
+                    {
+                        user: '"What are Ali Abdaal\'s top productivity tools?"',
+                        ai: 'Ali\'s top picks include <strong>Notion</strong> for organization, <strong>Anki</strong> for spaced repetition learning, and <strong>Todoist</strong> for task management. He really emphasizes building systems over just setting goals.<br><br>📹 <a href="#" style="color: var(--accent-primary);">Watch "My Productivity System"</a>'
+                    },
+                    {
+                        user: '"Summarize Peter McKinnon\'s photography tips for beginners."',
+                        ai: 'Peter\'s key tips are: 1) Master composition first, 2) Always shoot in golden hour, 3) Focus on telling a story, and 4) Always shoot in RAW format. He often says that great gear doesn\'t make a great photographer.<br><br>📹 <a href="#" style="color: var(--accent-primary);">Multiple videos referenced</a>'
+                    },
+                     {
+                        user: '"What\'s Gary Vee\'s core social media strategy?"',
+                        ai: 'Gary emphasizes two main things: <strong>authenticity</strong> and providing <strong>massive value upfront</strong>. He created the "Jab, Jab, Jab, Right Hook" model, which means give value three times before you ask for anything.<br><br>📹 <a href="#" style="color: var(--accent-primary);">Watch "Jab, Jab, Jab..."</a>'
+                    }
+                ];
+
+                const startDemo = () => {
+                    const currentDemo = demoMessages[demoStep % demoMessages.length];
+                    demoContainer.innerHTML = `
+                        <div class="chat-message">
+                            <div class="message-user">You:</div>
+                            <div class="message-content">${currentDemo.user}</div>
+                        </div>
+                        <div class="chat-message">
+                            <div class="message-ai">YoppyChat:</div>
+                            <div class="message-content">${currentDemo.ai}</div>
+                        </div>
+                        <p class="demo-prompt">💡 Click me to see more examples</p>
+                    `;
+                    demoStep++;
+                };
+                
+                demoContainer.addEventListener('click', startDemo);
+            }
+        });
+    </script>
+</body>
+</html>

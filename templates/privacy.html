@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy - YoppyChat AI{% endblock %}
+
+{% block content %}
+<style>
+    .privacy-container {
+        padding: var(--spacing-lg);
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .privacy-container h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-top: var(--spacing-xl);
+        margin-bottom: var(--spacing-md);
+        padding-bottom: var(--spacing-sm);
+        border-bottom: 1px solid var(--neutral-200);
+    }
+    .privacy-container h3 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-top: var(--spacing-lg);
+        margin-bottom: var(--spacing-sm);
+    }
+    .privacy-container p, .privacy-container li {
+        color: var(--text-secondary);
+        line-height: 1.7;
+        margin-bottom: var(--spacing-sm);
+    }
+    .privacy-container ul {
+        list-style-type: disc;
+        padding-left: 20px;
+    }
+    .privacy-container strong {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+</style>
+
+<div class="page-header">
+    <h1 class="page-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Privacy Policy
+    </h1>
+    <p class="page-description">
+        Last Updated: July 11, 2025
+    </p>
+</div>
+
+<div class="privacy-container">
+    <p>Your privacy is important to us. This Privacy Policy explains how YoppyChat AI ("we," "us," or "our") collects, uses, and discloses information about you when you use our web application and services (collectively, the "Service").</p>
+
+    <h2>1. Information We Collect</h2>
+    <p>We collect information in a few different ways:</p>
+    
+    <h3>Information You Provide to Us</h3>
+    <ul>
+        <li><strong>Account Information:</strong> When you register for an account using Google OAuth, we receive your name, email address, and profile picture from Google.</li>
+        <li><strong>YouTube Channel Information:</strong> We collect the YouTube channel URLs that you submit to the Service for processing.</li>
+        <li><strong>Chat History:</strong> We store the questions you ask the AI and the answers it generates to provide a continuous conversation history.</li>
+    </ul>
+
+    <h3>Information We Collect Automatically</h3>
+    <ul>
+        <li><strong>Usage Information:</strong> We track your activity in connection with the Service, such as the number of channels you process and the number of queries you make, to enforce subscription limits and improve our service.</li>
+        <li><strong>Cookies and Session Data:</strong> We use cookies and similar technologies to keep you logged in and to maintain your session. Our service provider, Supabase, may also use cookies for authentication purposes.</li>
+    </ul>
+
+    <h2>2. How We Use Your Information</h2>
+    <p>We use the information we collect to:</p>
+    <ul>
+        <li>Provide, operate, and maintain our Service.</li>
+        <li>Process your requests, such as fetching and embedding video transcripts.</li>
+        <li>Manage your account, subscriptions, and billing.</li>
+        <li>Communicate with you, including sending service-related notifications.</li>
+        <li>Improve and personalize the Service and to develop new features.</li>
+        <li>Monitor and analyze trends, usage, and activities in connection with our Service.</li>
+    </ul>
+
+    <h2>3. How We Share Your Information</h2>
+    <p>We do not sell your personal information. We may share information about you in the following circumstances:</p>
+    <ul>
+        <li><strong>With Third-Party Service Providers:</strong> We use third-party vendors and service providers for hosting, database management, authentication, and other services. These include:
+            <ul>
+                <li><strong>Supabase:</strong> For our database, authentication, and backend infrastructure.</li>
+                <li><strong>Redis:</strong> For caching and managing background tasks.</li>
+                <li><strong>AI Providers (e.g., OpenAI, Groq, Gemini):</strong> When you ask a question, the question itself, along with relevant context from the video transcripts, is sent to a third-party AI provider to generate an answer. We do not send your personal account information to these providers.</li>
+            </ul>
+        </li>
+        <li><strong>For Legal Reasons:</strong> We may disclose your information if we believe it's required by law, subpoena, or other legal process.</li>
+    </ul>
+
+    <h2>4. Data Storage and Security</h2>
+    <p>We use Supabase to store your data, which employs industry-standard security measures to protect your information. While we take reasonable measures to help protect your information, no security system is impenetrable, and we cannot guarantee the security of our systems 100%.</p>
+
+    <h2>5. Your Data Rights and Choices</h2>
+    <p>You have rights concerning your personal data:</p>
+    <ul>
+        <li><strong>Access and Correction:</strong> You can review and update your account information through your account settings.</li>
+        <li><strong>Deletion:</strong> You can delete your processed channels and associated chat history directly through the application interface. Deleting a channel will remove its associated data from our primary databases.</li>
+        <li><strong>Account Deletion:</strong> If you wish to delete your entire account, please contact us at the email address below.</li>
+    </ul>
+
+    <h2>6. Children's Privacy</h2>
+    <p>Our Service is not directed to individuals under 13. We do not knowingly collect personal information from children under 13. If we become aware that a child under 13 has provided us with personal information, we will take steps to delete such information.</p>
+
+    <h2>7. Changes to This Privacy Policy</h2>
+    <p>We may change this Privacy Policy from time to time. If we make changes, we will notify you by revising the date at the top of the policy and, in some cases, we may provide you with additional notice (such as adding a statement to our homepage or sending you a notification).</p>
+    
+    <h2>8. Contact Us</h2>
+    <p>If you have any questions about this Privacy Policy, please contact us at: <strong>support@YoppyChatai.com</strong>.</p>
+</div>
+{% endblock %}
