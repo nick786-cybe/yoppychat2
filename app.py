@@ -700,15 +700,6 @@ def integrations():
         bot_username=bot_username
     )
 
-@app.route('/disconnect_telegram', methods=['POST'])
-@login_required
-def disconnect_telegram():
-    user_id = session['user']['id']
-    supabase_admin = get_supabase_admin_client()
-    supabase_admin.table('telegram_connections').delete().eq('app_user_id', user_id).execute()
-    flash('Telegram account disconnected successfully.', 'success')
-    return redirect(url_for('integrations'))
-
 @app.route('/about')
 def about():
     return render_template('about.html')
