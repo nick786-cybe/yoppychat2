@@ -568,18 +568,19 @@
     border-color: var(--accent-primary);
     color: var(--text-primary);
 }
+
 /* Add these new styles for the tone selector */
 .profile-setting {
-    border-top: 1px solid var(--neutral-200);
-    padding-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
 }
 .setting-title {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    text-align: center;
 }
 .tone-selector {
     display: flex;
@@ -587,6 +588,8 @@
     border-radius: var(--radius-md);
     padding: 4px;
     border: 1px solid var(--neutral-200);
+    max-width: 300px;
+    margin: 0 auto;
 }
 .tone-option {
     flex: 1;

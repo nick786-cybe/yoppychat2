@@ -135,6 +135,13 @@
             </div>
 
             <form id="questionForm" class="question-form" role="form">
+                <div class="profile-setting">
+                    <h3 class="setting-title">Response Tone</h3>
+                        <div class="tone-selector" id="tone-selector">
+                            <button class="tone-option active" data-tone="Casual">Casual</button>
+                            <button class="tone-option" data-tone="Factual">Factual</button>
+                        </div>
+                </div>
                 <div class="form-group">
                     <div class="textarea-wrapper">
                         <textarea
@@ -204,15 +211,7 @@
                     {% for topic in current_channel.topics %}
                     <span class="tag">{{ topic }}</span>
                     {% endfor %}
-                    </div>
-                    <div class="profile-setting">
-                        <h3 class="setting-title">Response Tone</h3>
-                            <div class="tone-selector" id="tone-selector">
-                                <button class="tone-option active" data-tone="Casual">Casual</button>
-                                <button class="tone-option" data-tone="Factual">Factual</button>
-                            </div>
-                    </div>
-
+                </div>
             </div>
             {% endif %}
         </div>
