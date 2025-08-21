@@ -42,10 +42,11 @@
             {% if channel_name %}
                 <a href="#" onclick="refreshChannel('{{ saved_channels[channel_name].id }}', this); return false;">Refresh Channel</a>
                 <a href="#" onclick="clearChat('{{ channel_name }}'); return false;">Clear Chat</a>
+                {% if not session.get('active_community_id') %}
                 <a href="{{ url_for('integrations', channel_id=saved_channels[channel_name].id) }}">Add Bot to Telegram Group</a>
                 <hr>
                 <a href="{{ saved_channels.get(channel_name, {}).get('channel_url', '#') }}" target="_blank" rel="noopener noreferrer">View on YouTube</a>
-            {% else %}
+                {% endif %}{% else %}
                 <a href="#" onclick="clearChat('general'); return false;">Clear Chat</a>
             {% endif %}
         </div>
@@ -194,14 +195,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     <span>Clear Chat</span>
                 </a>
-                <a href="{{ url_for('integrations', channel_id=current_channel.id) }}" class="action-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    <span>Telegram</span>
-                </a>
-                <a href="{{ current_channel.get('channel_url', '#') }}" target="_blank" rel="noopener noreferrer" class="action-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 11.75a29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
-                    <span>YouTube</span>
-                </a>
+                    {% if not session.get('active_community_id') %}
+                    <a href="{{ url_for('integrations', channel_id=current_channel.id) }}" class="action-btn">
+                        </a>
+                    <a href="{{ current_channel.get('channel_url', '#') }}" target="_blank" rel="noopener noreferrer" class="action-btn">
+                        </a>
+                    {% endif %}
             </div>
 
             {% if current_channel.topics %}

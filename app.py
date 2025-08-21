@@ -23,6 +23,8 @@ from huey.exceptions import TaskException
 from dotenv import load_dotenv
 from flask_compress import Compress
 import jwt
+from utils import whop_api
+from utils import db_utils
 
 logger = logging.getLogger(__name__)
 
@@ -126,54 +128,9 @@ def login_required(f):
             raise e
     return decorated_function
 
-@app.route('/auth/whop-login-success')
-def whop_login_success():
-    token = request.args.get('token')
-    jwt_secret = os.environ.get('JWT_SECRET')
 
-    if not token or not jwt_secret:
-        flash('Authentication failed.', 'error')
-        return redirect(url_for('home'))
 
-    try:
-        decoded_payload = jwt.decode(token, jwt_secret, algorithms=['HS256'])
 
-        email = decoded_payload['email']
-        supabase_admin = get_supabase_admin_client()
-        list_of_users = supabase_admin.auth.admin.list_users()
-        auth_user = next((u for u in list_of_users if u.email == email), None)
-
-        if not auth_user:
-            new_user_res = supabase_admin.auth.admin.create_user({'email': email, 'email_confirm': True, 'password': secrets.token_urlsafe(16)})
-            auth_user = new_user_res.user
-
-        app_user_id = str(auth_user.id)
-        profile_data = { 'id': app_user_id, 'whop_user_id': decoded_payload['whop_user_id'], 'full_name': decoded_payload.get('full_name'), 'avatar_url': decoded_payload.get('avatar_url'), 'email': email }
-        db_utils.create_or_update_profile(profile_data)
-        db_utils.create_initial_usage_stats(app_user_id)
-
-        session['user'] = auth_user.model_dump()
-
-        active_whop_community_id = decoded_payload.get('active_community_id')
-        if active_whop_community_id:
-            community_res = supabase_admin.table('communities').select('id, default_channel_id, channels(channel_name)').eq('whop_community_id', active_whop_community_id).single().execute()
-            if community_res.data:
-                community = community_res.data
-                session['active_community_id'] = community['id']
-
-                # If a default channel is set, redirect there.
-                if community.get('default_channel_id') and community.get('channels'):
-                    default_channel_name = community['channels']['channel_name']
-                    flash('Successfully logged in via Whop!', 'success')
-                    return redirect(url_for('ask', channel_name=default_channel_name))
-
-        flash('Successfully logged in via Whop!', 'success')
-        return redirect(url_for('channel'))
-
-    except Exception as e:
-        logging.error(f"An error occurred during Whop login success: {e}", exc_info=True)
-        flash('An unexpected error occurred during login.', 'error')
-        return redirect(url_for('home'))
 
 @app.route('/whop/')
 def whop_landing():
@@ -240,12 +197,21 @@ def whop_installation_callback():
 
 @app.before_request
 def check_token_expiry():
-    if 'user' in session and session.get('expires_at'):
+    # Only check for expiry if a user session and all tokens exist
+    if 'user' in session and session.get('expires_at') and session.get('refresh_token'):
+        # Check if the token expires in the next 60 seconds
         if session['expires_at'] < (time.time() + 60):
+            print("[INFO] Access token is expiring, attempting to refresh...")
             new_session = refresh_supabase_session(session.get('refresh_token'))
             if new_session:
-                session.update(new_session)
+                # Update the session with new token details
+                session['access_token'] = new_session.get('access_token')
+                session['refresh_token'] = new_session.get('refresh_token')
+                session['expires_at'] = new_session.get('expires_at')
+                print("[SUCCESS] Session refreshed successfully.")
             else:
+                # If refresh fails, clear the session to force a re-login
+                print("[WARNING] Failed to refresh session. Clearing session.")
                 session.clear()
 
 @app.route('/auth/callback')
@@ -260,13 +226,30 @@ def set_auth_cookie():
         access_token = data.get('access_token')
         refresh_token = data.get('refresh_token')
         expires_at = data.get('expires_at')
-        if not access_token:
-            return jsonify({'status': 'error', 'message': 'Access token is missing.'}), 400
-        supabase = get_supabase_client(access_token)
-        user_response = supabase.auth.get_user(access_token)
+
+        if not all([access_token, refresh_token, expires_at]):
+            return jsonify({'status': 'error', 'message': 'Incomplete session data provided.'}), 400
+
+        # --- START OF FIX ---
+        # 1. Initialize an anonymous Supabase client first.
+        supabase = get_supabase_client()
+        if not supabase:
+            logging.error("Failed to initialize Supabase client. Check environment variables.")
+            return jsonify({'status': 'error', 'message': 'Server configuration error.'}), 500
+
+        # 2. Explicitly set the user's session on the client instance.
+        supabase.auth.set_session(access_token, refresh_token)
+
+        # 3. Now, get the user. This will be an authenticated call.
+        user_response = supabase.auth.get_user()
+        # --- END OF FIX ---
+
+        if not user_response or not hasattr(user_response, 'user') or not user_response.user:
+            logging.error(f"Failed to get user from Supabase with provided token.")
+            return jsonify({'status': 'error', 'message': 'Invalid authentication token.'}), 401
+        
         user = user_response.user
-        if not user:
-            return jsonify({'status': 'error', 'message': 'Invalid token.'}), 401
+            
         # Ensure profile + usage stats exist
         profile = db_utils.get_profile(user.id)
         if not profile:
@@ -277,16 +260,119 @@ def set_auth_cookie():
                 'avatar_url': user.user_metadata.get('avatar_url')
             })
             db_utils.create_initial_usage_stats(user.id)
-        # Save session
+            
+        # Save all details to the session
         session['user'] = user.model_dump()
         session['access_token'] = access_token
         session['refresh_token'] = refresh_token
         session['expires_at'] = expires_at
+        
         return jsonify({'status': 'success', 'message': 'Session set successfully.'})
     except Exception as e:
         logging.error(f"Error in set-cookie: {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'An internal error occurred.'}), 500
 
+
+# In yoppychat2/app.py
+
+# In yoppychat2/app.py
+
+@app.route('/whop/app')
+def whop_app_entry():
+    """
+    Handles Whop user login, creates user and community records if they don't exist,
+    and redirects to the appropriate page.
+    """
+    print("\n--- Whop App Entry Triggered ---")
+    user_token = whop_api.get_embedded_user_token(request)
+    if not user_token:
+        flash("Authentication failed. Please access the app through your Whop community.", "error")
+        return redirect(url_for('home'))
+
+    whop_user = whop_api.get_user_from_token(user_token)
+    whop_company = whop_api.get_current_company()
+
+    if not whop_user or not whop_company:
+        flash("Failed to verify user or company with Whop.", "error")
+        return redirect(url_for('home'))
+
+    try:
+        supabase_admin = get_supabase_admin_client()
+        email = whop_user.get('email')
+        whop_user_id = whop_user.get('id')
+
+        print(f"[INFO] Whop User Detected: {email} (Whop ID: {whop_user_id})")
+
+        # --- THIS IS THE FIX ---
+        # The list_users() call returns a list of users directly. We iterate over this list.
+        list_of_users = supabase_admin.auth.admin.list_users()
+        auth_user = next((u for u in list_of_users if u.email == email), None)
+        # --- END FIX ---
+        
+        if not auth_user:
+            print(f"[INFO] No existing user found for {email}. Creating new user...")
+            auth_user = supabase_admin.auth.admin.create_user({
+                'email': email, 'email_confirm': True, 'password': secrets.token_urlsafe(16)
+            }).user
+            print(f"[SUCCESS] Created new user with App ID: {auth_user.id}")
+        
+        app_user_id = str(auth_user.id)
+        user_role = whop_api.get_user_role_in_company(whop_user_id)
+        
+        print(f"[INFO] User Role Determined: {user_role}")
+
+        profile_data = {
+            'id': app_user_id,
+            'whop_user_id': whop_user_id,
+            'full_name': whop_user.get('name'),
+            'avatar_url': whop_user.get('profile_pic_url'),
+            'email': email,
+            'is_community_owner': user_role == 'admin'
+        }
+        
+        profile = db_utils.create_or_update_profile(profile_data)
+        if not profile:
+            raise Exception(f"Failed to create or find profile for user {app_user_id}")
+        
+        print(f"[SUCCESS] Profile created/updated for {email}")
+
+        db_utils.create_initial_usage_stats(app_user_id)
+
+        whop_community_id = whop_company['id']
+        community_res = supabase_admin.table('communities').select('id').eq('whop_community_id', whop_community_id).maybe_single().execute()
+        
+        community_id = None
+        if community_res and community_res.data:
+            community_id = community_res.data['id']
+            print(f"[INFO] Found existing community in DB with ID: {community_id}")
+        elif user_role == 'admin':
+            print(f"[INFO] Community not found. Creating for admin user {app_user_id}...")
+            new_community = db_utils.add_community({
+                'whop_community_id': whop_community_id,
+                'owner_user_id': app_user_id
+            })
+            if new_community:
+                community_id = new_community['id']
+                print(f"[SUCCESS] Created new community with ID: {community_id}")
+        
+        if not community_id:
+            flash("This community has not been set up yet. An admin must log in first.", "error")
+            return redirect(url_for('home'))
+            
+        session['user'] = auth_user.model_dump()
+        session['active_community_id'] = community_id
+        
+        db_utils.link_user_to_community(app_user_id, community_id)
+        
+        print(f"--- Login successful for {email}. Redirecting to dashboard. ---")
+        flash(f"Welcome from {whop_company.get('title', 'your community')}!", 'success')
+        return redirect(url_for('channel'))
+
+    except Exception as e:
+        logging.error(f"An error occurred during Whop login: {e}", exc_info=True)
+        flash("An unexpected error occurred during login.", "error")
+        return redirect(url_for('home'))
+    
 @app.route('/')
 def home():
     if 'user' in session:
@@ -371,17 +457,17 @@ def set_default_channel(channel_id):
 
     supabase_admin = get_supabase_admin_client()
 
-    # 1. Verify user is the owner of the active community
+    # 1. Verify the current user is the owner of the active community
     community_resp = supabase_admin.table('communities').select('owner_user_id').eq('id', active_community_id).single().execute()
     if not community_resp.data or str(community_resp.data['owner_user_id']) != str(user_id):
         return jsonify({'status': 'error', 'message': 'You are not the owner of this community.'}), 403
 
-    # 2. Verify the channel is a shared channel within that community
+    # 2. Verify the channel being set as default is a shared channel within that community
     channel_resp = supabase_admin.table('channels').select('id').eq('id', channel_id).eq('is_shared', True).eq('community_id', active_community_id).single().execute()
     if not channel_resp.data:
         return jsonify({'status': 'error', 'message': 'This channel is not a shared channel in your community.'}), 403
 
-    # 3. Set the default channel
+    # 3. Update the community's default_channel_id
     supabase_admin.table('communities').update({'default_channel_id': channel_id}).eq('id', active_community_id).execute()
 
     return jsonify({'status': 'success', 'message': 'Default channel has been updated.'})
@@ -410,6 +496,7 @@ def ask(channel_name):
         current_channel=current_channel,
         saved_channels=all_user_channels
     )
+
 
 # ---- Lightweight SPA APIs ----
 @app.route('/api/channel_details/<path:channel_name>')
