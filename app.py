@@ -28,7 +28,7 @@ from utils import db_utils
 import hmac
 import hashlib
 import base64
-from utils.subscription_utils import PLANS
+from utils.subscription_utils import PLANS, COMMUNITY_PLANS
 
 logger = logging.getLogger(__name__)
 
@@ -328,6 +328,53 @@ def whop_community_update_webhook():
     except Exception as e:
         logging.error(f"Error processing community webhook for {whop_community_id}: {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'An internal server error occurred.'}), 500
+
+
+@app.route('/whop/webhook/community-plan-update', methods=['POST'])
+@validate_whop_webhook
+def whop_community_plan_update_webhook():
+    """
+    Handles community plan update webhooks from Whop.
+    Example payload: { "data": { "whop_community_id": "...", "new_plan_id": "pro_community" } }
+    """
+    payload = request.get_json()
+    logging.info(f"Received Whop community plan update webhook: {payload}")
+
+    data = payload.get('data', {})
+    whop_community_id = data.get('whop_community_id')
+    new_plan_id = data.get('new_plan_id')
+
+    if not whop_community_id or not new_plan_id:
+        return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+
+    new_plan_details = COMMUNITY_PLANS.get(new_plan_id)
+    if not new_plan_details:
+        return jsonify({'status': 'error', 'message': f'Invalid plan_id: {new_plan_id}'}), 400
+
+    try:
+        supabase_admin = get_supabase_admin_client()
+        community_update = {
+            'plan_id': new_plan_id,
+            'shared_channel_limit': new_plan_details['shared_channels_allowed']
+        }
+        update_res = supabase_admin.table('communities').update(community_update).eq('whop_community_id', whop_community_id).execute()
+
+        if not update_res.data:
+             logging.warning(f"Webhook received for non-existent community with whop_community_id: {whop_community_id}")
+             return jsonify({'status': 'not_found', 'message': 'Community not found'}), 200
+
+        logging.info(f"Successfully updated plan for community {whop_community_id} to {new_plan_id}.")
+
+        # Invalidate the Redis cache for this community
+        if redis_client:
+            redis_client.delete(f"community_status:{update_res.data[0]['id']}")
+
+        return jsonify({'status': 'success'})
+
+    except Exception as e:
+        logging.error(f"Error processing community plan update for {whop_community_id}: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': 'An internal server error occurred.'}), 500
+
 
 @app.before_request
 def check_token_expiry():
