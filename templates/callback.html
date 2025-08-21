@@ -3,60 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <title>Authenticating...</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <p>Please wait, you are being authenticated...</p>
     <script>
-        const supabaseUrl = "{{ SUPABASE_URL or '' }}";
-        const supabaseAnonKey = "{{ SUPABASE_ANON_KEY or '' }}";
-        
-        if (supabaseUrl && supabaseAnonKey && window.supabase) {
-            const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        // This function correctly parses the access token from the URL fragment
+        function getUrlParameter(name) {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            return params.get(name);
+        }
 
-            supabase.auth.onAuthStateChange(async (event, session) => {
-                if (event === "SIGNED_IN") {
-                    try {
-                        const response = await fetch('/auth/set-cookie', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                access_token: session.access_token,
-                                refresh_token: session.refresh_token,
-                                expires_at: session.expires_at
-                            }),
-                        });
+        const accessToken = getUrlParameter('access_token');
+        const refreshToken = getUrlParameter('refresh_token');
+        const expiresIn = getUrlParameter('expires_in');
 
-                        if (response.ok) {
-                            // --- START: MODIFIED REDIRECT LOGIC ---
-                            const pendingActionJSON = localStorage.getItem('action_after_login');
-                            let redirectTo = "{{ url_for('channel') }}"; // Default redirect
+        if (accessToken && refreshToken && expiresIn) {
+            const expiresAt = Date.now() / 1000 + parseInt(expiresIn, 10);
 
-                            if (pendingActionJSON) {
-                                const pendingAction = JSON.parse(pendingActionJSON);
-                                // If the pending action was to process a channel,
-                                // we ensure the user is sent back to the channel page.
-                                if (pendingAction.type === 'process_channel') {
-                                    redirectTo = "{{ url_for('channel') }}";
-                                }
-                                // You could add other post-login actions here in the future
-                            }
-                            
-                            window.location.href = redirectTo;
-                            // --- END: MODIFIED REDIRECT LOGIC ---
-                        } else {
-                            throw new Error('Server failed to set auth cookie.');
-                        }
-                    } catch (error) {
-                        console.error('Authentication sync failed:', error);
-                        alert('Login failed. Please try again.');
-                        window.location.href = "{{ url_for('home') }}"; // Redirect to home on failure
-                    }
+            fetch('/auth/set-cookie', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    access_token: accessToken,
+                    refresh_token: refreshToken,
+                    expires_at: expiresAt
+                }),
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Redirect to the channel page on successful login
+                    window.location.href = "{{ url_for('channel') }}";
+                } else {
+                    throw new Error('Server failed to set auth cookie.');
                 }
+            })
+            .catch(error => {
+                console.error('Authentication sync failed:', error);
+                alert('Login failed. Please try again.');
+                window.location.href = "{{ url_for('home') }}";
             });
         } else {
-            console.error("Supabase credentials not found in callback.");
-            alert("Configuration error. Could not complete login.");
+            console.error("Supabase tokens not found in URL fragment.");
+            alert("Authentication error. Could not complete login.");
+            window.location.href = "{{ url_for('home') }}";
         }
     </script>
 </body>

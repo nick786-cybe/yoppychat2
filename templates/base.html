@@ -50,7 +50,8 @@
                     </div>
                 </div>
             </div>
-            {% if user %}
+            
+            {% if user and not session.get('active_community_id') %}
             <div class="sidebar-actions-section">
                 <a href="{{ url_for('integrations') }}" class="sidebar-action-item">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
@@ -58,6 +59,7 @@
                 </a>
             </div>
             {% endif %}
+
             <div class="sidebar-footer">
                 <div style="position: relative;" id="profile-container">
                     <div class="user-profile-section" id="user-profile-trigger" style="cursor: pointer;">
@@ -76,17 +78,27 @@
                         {% endif %}
                     </div>
 
-                    {# --- CORRECTED LOGIC BLOCK --- #}
                     {% if user and user_status %}
                     <div class="profile-menu" id="user-profile-menu">
                         <div class="menu-header">
                             <div class="menu-username">{{ session.user.user_metadata.full_name or "User" }}</div>
                             <div class="menu-email">{{ session.user.email }}</div>
                         </div>
+
                         <div class="menu-plan-section">
-                            <span class="menu-plan-name">Subscription: {{ user_status.plan_name | title }}</span>
-                            <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-btn">Upgrade</a>
+                            <span class="menu-plan-name">
+                                {% if user_status.active_community_id and user_status.community_role %}
+                                    Community Role: <strong>{{ user_status.community_role | title }}</strong>
+                                {% else %}
+                                    Subscription: {{ user_status.plan_name | title }}
+                                {% endif %}
+                            </span>
+                            
+                            {% if not user_status.active_community_id %}
+                                <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-btn">Upgrade</a>
+                            {% endif %}
                         </div>
+
                         <div class="menu-credits-section">
                             <span class="menu-credits-label">Remaining Queries</span>
                             <span class="menu-credits-value">
@@ -98,7 +110,7 @@
                             </span>
                         </div>
                         <ul class="menu-links">
-                            {% if not user_status.is_whop_user %}
+                            {% if not is_embedded_whop_user %}
                              <li><a href="{{ url_for('about') }}">About</a></li>
                              <li><a href="{{ url_for('terms') }}">Terms of Service</a></li>
                              <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
@@ -115,27 +127,26 @@
                              </li>
                         </ul>
                     </div>
-
-                    {% endif %} {# <-- THIS WAS THE MISSING TAG #}
+                    {% endif %}
                 </div>
             </div>
         </aside>
 
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<main class="main-content {% if request.endpoint in ['ask', 'ask_channel'] %}has-mobile-nav{% endif %}">
-    <div class="card">
-        {% block content %}{% endblock %}
-    </div>
-</main>
+        <main class="main-content {% if request.endpoint in ['ask', 'ask_channel'] %}has-mobile-nav{% endif %}">
+            <div class="card">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
     </div>
 
     <div id="login-popup-modal" class="login-popup-overlay">
         <div class="login-popup-content">
             <button class="login-popup-close-btn" onclick="closeLoginPopup()">&times;</button>
             <div class="login-popup-icon">
-                    <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-light" width="60" height="60">
-                    <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-dark" width="60" height="60">
+                <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-light" width="60" height="60">
+                <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-dark" width="60" height="60">
             </div>
             <h3 class="login-popup-title">Welcome to YoppyChat</h3>
             <p class="login-popup-subtitle">Create an account or log in to continue</p>
@@ -157,62 +168,22 @@
             </div>
         </div>
     </div>
-<div id="pricing-modal-overlay" class="login-popup-overlay">
-    <div class="login-popup-content" style="max-width: 1200px; text-align: left;">
-        <button class="login-popup-close-btn" onclick="closePricingModal()">&times;</button>
-        <div style="padding: 1rem;">
-            <h3 class="login-popup-title" style="text-align: center;">Simple, Scalable Pricing</h3>
 
-                                        <p style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-weight: 500;">
-                We're committed to making this the best platform for creators. 90% of all revenue is reinvested directly into improving this project.
-            </p>
-            <div class="pricing-grid-modal">
-                    <div class="pricing-card">
-                        <h4>Free</h4>
-                        <p class="text-muted">Get a taste of what's possible.</p>
-                        <p class="price">₹0 <span>/ month</span></p>
-                        <a href="#" class="btn-pricing btn-pricing-neutral">Get Started</a>
-                        <ul class="pricing-features">
-                            <li><span class="icon">✓</span>3 Channel</li>
-                            <li><span class="icon">✓</span>Max 50 latest video Knowledge/channel</li>
-                            <li><span class="icon">✓</span>50 queries/month</li>
-                            <li><span class="icon">✓</span>Manual Refresh</li>
-                        </ul>
-                    </div>
-
-                    <div class="pricing-card featured">
-                        <span class="popular-badge">MOST POPULAR</span>
-                        <h4>Creator</h4>
-                        <p class="text-muted">For the serious community builder.</p>
-                        <p class="price price-featured">₹299 <span>/ month</span></p>
-                        <a href="#" class="btn-pricing btn-pricing-accent">Choose Creator</a>
-                        <ul class="pricing-features">
-                            <li><span class="icon">✓</span>10 Channels</li>
-                            <li><span class="icon">✓</span>Max 250 latest video Knowledge/channel</li>
-                            <li><span class="icon">✓</span>2,500 queries/month</li>
-                            <li><span class="icon">✓</span>Auto Weekly Refresh</li>
-                            <li><span class="icon">✓</span>Faster Responses</li>
-                            <li><span class="icon">✓</span>Access to Your Persona bot for your community</li>
-                        </ul>
-                    </div>
-
-                    <div class="pricing-card">
-                        <h4>Pro</h4>
-                        <p class="text-muted">A fully branded, white-glove experience.</p>
-                        <p class="price">₹1,499 <span>/ month</span></p>
-                        <a href="#" class="btn-pricing btn-pricing-neutral">Choose Pro</a>
-                        <ul class="pricing-features">
-                             <li><span class="icon">✓</span>Unlimited Channels</li>
-                            <li><span class="icon">✓</span>Unlimited video knowledge/channel</li>
-                            <li><span class="icon">✓</span>10,000 queries/month</li>
-                            <li><span class="icon">✓</span>Faster Responses</li>
-                            <li><span class="icon">✓</span><strong>White-labeled channel knowledge bot (custom name & profile pic)</strong></li>
-                        </ul>
-                    </div>
-            </div>
+    <div id="pricing-modal-overlay" class="login-popup-overlay">
+        <div class="login-popup-content" style="max-width: 1200px; text-align: left;">
+            <button class="login-popup-close-btn" onclick="closePricingModal()">&times;</button>
+            <div style="padding: 1rem;">
+                </div>
         </div>
     </div>
-</div>
+
+    <script>
+        // All JavaScript functions remain the same
+    </script>
+    {% block page_scripts %}{% endblock %}
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
     <script>
         // All JavaScript functions (showNotification, showLoginPopup, etc.) remain the same
         // ...
@@ -441,7 +412,7 @@
         });
     </script>
 
-    {% block page_scripts %}{% endblock %}
+
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
