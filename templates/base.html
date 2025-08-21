@@ -410,6 +410,32 @@
                 });
             }
         });
+
+    /**
+     * Displays a customized upgrade popup.
+     * @param {string} message - The message to display in the popup.
+     */
+    function showUpgradePopup(message) {
+        const modal = document.getElementById('pricing-modal-overlay');
+        const modalContent = modal ? modal.querySelector('.login-popup-content > div') : null;
+
+        if (modal && modalContent) {
+            // Set the content for the upgrade message
+            modalContent.innerHTML = `
+                <div style="text-align: center; padding: 1rem 2rem;">
+                    <h3 style="font-size: 1.5rem; color: var(--text-primary); margin-bottom: 0.75rem;">Upgrade Required</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">${message}</p>
+                    <a href="https://whop.com/yoppychat-ai/personal-plan/?a=user"
+                       target="_blank"
+                       class="btn-upgrade"
+                       style="display: inline-block; background-color: var(--accent-primary); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
+                        Upgrade to Personal Plan
+                    </a>
+                </div>
+            `;
+            modal.style.display = 'flex'; // Show the modal
+        }
+    }
     </script>
 
 

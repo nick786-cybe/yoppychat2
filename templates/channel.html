@@ -158,6 +158,25 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(data => {
             if (data.status === 'processing' && data.task_id) {
+                // --- NEW: Add processing card to sidebar ---
+                const channelNameMatch = channelUrl.match(/@([a-zA-Z0-9_.-]+)/);
+                const channelName = channelNameMatch ? channelNameMatch[1] : 'New Channel';
+                const sidebarList = document.querySelector('.sidebar .channel-list');
+                if (sidebarList) {
+                    const newCard = document.createElement('div');
+                    newCard.className = 'channel-item-wrapper processing';
+                    newCard.dataset.taskId = data.task_id;
+                    newCard.innerHTML = `
+                        <a href="#" class="channel-link" onclick="return false;">
+                            <div class="channel-avatar-spinner"></div>
+                            <span class="channel-name">${channelName}</span>
+                        </a>
+                        <div class="status-badge">Processing</div>
+                    `;
+                    sidebarList.appendChild(newCard);
+                }
+                // --- END NEW ---
+
                 // Task started, begin polling for status updates
                 pollingIntervals[data.task_id] = setInterval(() => checkTaskStatus(data.task_id), 3000);
                 if (urlInput) urlInput.value = '';
