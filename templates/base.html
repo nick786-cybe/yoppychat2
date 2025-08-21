@@ -517,6 +517,7 @@ html[data-theme='dark'] .logo-light {
 /* --- Base and Light Mode Styles --- */
 
     </style>
+    {% block page_styles %}{% endblock %}
     <script>
         (function() {
             const theme = localStorage.getItem('theme') || 'light';
@@ -559,9 +560,9 @@ html[data-theme='dark'] .logo-light {
             </div>
             {% if user %}
             <div class="sidebar-actions-section">
-                <a href="{{ url_for('connect_telegram') }}" class="sidebar-action-item">
-                    <img src="{{ url_for('static', filename='images/telegram.svg') }}" alt="Connect Telegram" width="20" height="20">
-                    <span>Connect Telegram</span>
+                <a href="{{ url_for('integrations') }}" class="sidebar-action-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
+                    <span>Integrations</span>
                 </a>
             </div>
             {% endif %}
