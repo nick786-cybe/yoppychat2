@@ -517,6 +517,7 @@ html[data-theme='dark'] .logo-light {
 /* --- Base and Light Mode Styles --- */
 
     </style>
+    {% block page_styles %}{% endblock %}
     <script>
         (function() {
             const theme = localStorage.getItem('theme') || 'light';
