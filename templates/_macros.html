@@ -1,4 +1,18 @@
 {# This macro renders the channel card used on the main dashboard page #}
+{% macro render_dashboard_processing_channel_card(channel_name) %}
+<div class="channel-card processing">
+    <div class="channel-card-link">
+        <div class="channel-card-avatar-placeholder processing-placeholder">
+            <div class="channel-card-spinner"></div>
+        </div>
+        <div class="channel-card-details">
+            <div class="channel-card-title">{{ channel_name }}</div>
+            <div class="channel-card-status">Processing...</div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
 {% macro render_dashboard_channel_card(channel, channel_name) %}
 <div class="channel-card" data-channel-id="{{ channel.id }}">
     {# --- THIS LINE IS FIXED --- #}
@@ -18,6 +32,17 @@
 </div>
 {% endmacro %}
 
+
+{# This macro renders a channel item in a processing state for the sidebar #}
+{% macro render_sidebar_processing_channel_item(channel_name, task_id) %}
+<div class="channel-item-wrapper processing" data-task-id="{{ task_id }}">
+    <a href="#" class="channel-link" onclick="return false;">
+        <div class="channel-avatar-spinner"></div>
+        <span class="channel-name">{{ channel_name }}</span>
+    </a>
+    <div class="status-badge">Processing</div>
+</div>
+{% endmacro %}
 
 {# This macro renders the channel item used in the sidebar #}
 {% macro render_sidebar_channel_item(channel, channel_name) %}
