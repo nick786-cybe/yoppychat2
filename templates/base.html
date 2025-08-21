@@ -110,7 +110,7 @@
                             </span>
                         </div>
                         <ul class="menu-links">
-                            {% if not session.get('active_community_id') %}
+                            {% if not is_embedded_whop_user %}
                              <li><a href="{{ url_for('about') }}">About</a></li>
                              <li><a href="{{ url_for('terms') }}">Terms of Service</a></li>
                              <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>

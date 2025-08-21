@@ -25,6 +25,10 @@ from flask_compress import Compress
 import jwt
 from utils import whop_api
 from utils import db_utils
+import hmac
+import hashlib
+import base64
+from utils.subscription_utils import PLANS
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +56,9 @@ def inject_user_status():
         # Pass the active community ID from the session to the context processor
         active_community_id = session.get('active_community_id')
         user_status = get_user_status(user_id, active_community_id)
-        return dict(user_status=user_status, user=session.get('user'))
-    return dict(user_status=None, user=None)
+        is_embedded = session.get('is_embedded_whop_user', False)
+        return dict(user_status=user_status, user=session.get('user'), is_embedded_whop_user=is_embedded)
+    return dict(user_status=None, user=None, is_embedded_whop_user=False)
 
 def get_user_channels():
     """
@@ -195,6 +200,135 @@ def whop_installation_callback():
         flash('An unexpected error occurred during installation.', 'error')
         return redirect(url_for('home'))
 
+
+# --- Whop Webhooks ---
+
+def validate_whop_webhook(f):
+    """
+    Decorator to validate that a webhook request is genuinely from Whop.
+    This uses a HMAC-SHA256 signature.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Assumes the signature is in a header like 'X-Whop-Signature-SHA256'
+        signature_header = request.headers.get('X-Whop-Signature-SHA256')
+        if not signature_header:
+            logging.warning("Webhook received without signature header.")
+            return jsonify({'status': 'error', 'message': 'Missing signature'}), 401
+
+        secret = os.environ.get('WHOP_WEBHOOK_SECRET')
+        if not secret:
+            logging.error("WHOP_WEBHOOK_SECRET is not configured. Cannot validate webhook.")
+            return jsonify({'status': 'error', 'message': 'Server configuration error'}), 500
+
+        request_body = request.get_data()
+
+        try:
+            digest = hmac.new(secret.encode('utf-8'), request_body, digestmod=hashlib.sha256).digest()
+            computed_hmac = base64.b64encode(digest)
+        except Exception:
+            return jsonify({'status': 'error', 'message': 'Internal server error during validation'}), 500
+
+        if not hmac.compare_digest(computed_hmac, signature_header.encode('utf-8')):
+            logging.warning("Invalid webhook signature.")
+            return jsonify({'status': 'error', 'message': 'Invalid signature'}), 403
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.route('/whop/webhook/membership-update', methods=['POST'])
+@validate_whop_webhook
+def whop_membership_update_webhook():
+    """
+    Handles membership update webhooks from Whop to manage personal plans.
+    Example payload: { "data": { "whop_user_id": "...", "new_plan_id": "..." } }
+    """
+    payload = request.get_json()
+    logging.info(f"Received Whop membership webhook: {payload}")
+
+    data = payload.get('data', {})
+    whop_user_id = data.get('whop_user_id')
+    new_plan_id = data.get('new_plan_id')
+
+    if not whop_user_id or not new_plan_id:
+        logging.warning(f"Webhook payload missing whop_user_id or new_plan_id: {data}")
+        return jsonify({'status': 'error', 'message': 'Missing required fields in payload'}), 400
+
+    if new_plan_id not in PLANS:
+        logging.warning(f"Webhook received with unrecognized plan_id: {new_plan_id}")
+        return jsonify({'status': 'error', 'message': 'Unrecognized plan_id'}), 400
+
+    try:
+        supabase_admin = get_supabase_admin_client()
+        profile_res = supabase_admin.table('profiles').select('id').eq('whop_user_id', whop_user_id).maybe_single().execute()
+
+        if not profile_res.data:
+            logging.warning(f"Webhook for non-existent user with whop_user_id: {whop_user_id}")
+            return jsonify({'status': 'not_found', 'message': 'User not found'}), 200
+
+        app_user_id = profile_res.data['id']
+        supabase_admin.table('profiles').update({'personal_plan_id': new_plan_id}).eq('id', app_user_id).execute()
+        logging.info(f"Updated user {app_user_id} to plan: {new_plan_id}")
+
+        if redis_client:
+            user_communities_res = supabase_admin.table('user_communities').select('community_id').eq('user_id', app_user_id).execute()
+            if user_communities_res.data:
+                for item in user_communities_res.data:
+                    redis_client.delete(f"user_status:{app_user_id}:community:{item['community_id']}")
+            redis_client.delete(f"user_status:{app_user_id}:community:none")
+            logging.info(f"Invalidated Redis cache for user {app_user_id}")
+
+        return jsonify({'status': 'success'})
+
+    except Exception as e:
+        logging.error(f"Error processing membership webhook for {whop_user_id}: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': 'An internal server error occurred.'}), 500
+
+
+@app.route('/whop/webhook/community-update', methods=['POST'])
+@validate_whop_webhook
+def whop_community_update_webhook():
+    """
+    Handles community update webhooks from Whop, specifically for member count changes.
+    This is used to dynamically adjust the community's query limit.
+    Example payload: { "data": { "whop_community_id": "...", "member_count": 138 } }
+    """
+    payload = request.get_json()
+    logging.info(f"Received Whop community webhook: {payload}")
+
+    data = payload.get('data', {})
+    whop_community_id = data.get('whop_community_id')
+    member_count = data.get('member_count')
+
+    if not whop_community_id or member_count is None:
+        logging.warning(f"Webhook payload missing whop_community_id or member_count: {data}")
+        return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+
+    try:
+        # The user flow specifies a baseline of 100 queries per member.
+        new_query_limit = int(member_count) * 100
+
+        supabase_admin = get_supabase_admin_client()
+
+        # Find the community by its Whop ID and update the query limit
+        update_res = supabase_admin.table('communities').update({'query_limit': new_query_limit}).eq('whop_community_id', whop_community_id).execute()
+
+        if not update_res.data:
+             logging.warning(f"Webhook received for non-existent community with whop_community_id: {whop_community_id}")
+             return jsonify({'status': 'not_found', 'message': 'Community not found'}), 200
+
+        logging.info(f"Successfully updated query limit for community {whop_community_id} to {new_query_limit} based on {member_count} members.")
+
+        return jsonify({'status': 'success'})
+
+    except (ValueError, TypeError):
+        logging.warning(f"Invalid member_count received: {member_count}")
+        return jsonify({'status': 'error', 'message': 'Invalid member_count value'}), 400
+    except Exception as e:
+        logging.error(f"Error processing community webhook for {whop_community_id}: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': 'An internal server error occurred.'}), 500
+
 @app.before_request
 def check_token_expiry():
     # Only check for expiry if a user session and all tokens exist
@@ -247,9 +381,9 @@ def set_auth_cookie():
         if not user_response or not hasattr(user_response, 'user') or not user_response.user:
             logging.error(f"Failed to get user from Supabase with provided token.")
             return jsonify({'status': 'error', 'message': 'Invalid authentication token.'}), 401
-        
+
         user = user_response.user
-            
+
         # Ensure profile + usage stats exist
         profile = db_utils.get_profile(user.id)
         if not profile:
@@ -260,13 +394,13 @@ def set_auth_cookie():
                 'avatar_url': user.user_metadata.get('avatar_url')
             })
             db_utils.create_initial_usage_stats(user.id)
-            
+
         # Save all details to the session
         session['user'] = user.model_dump()
         session['access_token'] = access_token
         session['refresh_token'] = refresh_token
         session['expires_at'] = expires_at
-        
+
         return jsonify({'status': 'success', 'message': 'Session set successfully.'})
     except Exception as e:
         logging.error(f"Error in set-cookie: {e}", exc_info=True)
@@ -308,17 +442,17 @@ def whop_app_entry():
         list_of_users = supabase_admin.auth.admin.list_users()
         auth_user = next((u for u in list_of_users if u.email == email), None)
         # --- END FIX ---
-        
+
         if not auth_user:
             print(f"[INFO] No existing user found for {email}. Creating new user...")
             auth_user = supabase_admin.auth.admin.create_user({
                 'email': email, 'email_confirm': True, 'password': secrets.token_urlsafe(16)
             }).user
             print(f"[SUCCESS] Created new user with App ID: {auth_user.id}")
-        
+
         app_user_id = str(auth_user.id)
         user_role = whop_api.get_user_role_in_company(whop_user_id)
-        
+
         print(f"[INFO] User Role Determined: {user_role}")
 
         profile_data = {
@@ -329,18 +463,18 @@ def whop_app_entry():
             'email': email,
             'is_community_owner': user_role == 'admin'
         }
-        
+
         profile = db_utils.create_or_update_profile(profile_data)
         if not profile:
             raise Exception(f"Failed to create or find profile for user {app_user_id}")
-        
+
         print(f"[SUCCESS] Profile created/updated for {email}")
 
         db_utils.create_initial_usage_stats(app_user_id)
 
         whop_community_id = whop_company['id']
         community_res = supabase_admin.table('communities').select('id').eq('whop_community_id', whop_community_id).maybe_single().execute()
-        
+
         community_id = None
         if community_res and community_res.data:
             community_id = community_res.data['id']
@@ -354,25 +488,43 @@ def whop_app_entry():
             if new_community:
                 community_id = new_community['id']
                 print(f"[SUCCESS] Created new community with ID: {community_id}")
-        
+
         if not community_id:
             flash("This community has not been set up yet. An admin must log in first.", "error")
             return redirect(url_for('home'))
-            
+
         session['user'] = auth_user.model_dump()
         session['active_community_id'] = community_id
-        
+        session['is_embedded_whop_user'] = True
+
         db_utils.link_user_to_community(app_user_id, community_id)
-        
+
         print(f"--- Login successful for {email}. Redirecting to dashboard. ---")
         flash(f"Welcome from {whop_company.get('title', 'your community')}!", 'success')
+
+        # For all users (owners and members), try to find the community's default channel and redirect there.
+        community_res = supabase_admin.table('communities').select('default_channel_id').eq('id', community_id).single().execute()
+        if community_res.data and community_res.data.get('default_channel_id'):
+            channel_id = community_res.data['default_channel_id']
+            channel_res = supabase_admin.table('channels').select('channel_name').eq('id', channel_id).single().execute()
+            if channel_res.data and channel_res.data.get('channel_name'):
+                # If a default channel exists, everyone goes to the ask page for it.
+                return redirect(url_for('ask', channel_name=channel_res.data['channel_name']))
+
+        # Fallback if no default channel is set.
+        # For owners, they can set one up. For members, they must wait.
+        if user_role == 'member':
+            flash("Your community owner has not set a default channel yet. You will be able to chat once one is configured.", "info")
+        else: # For admins/owners
+            flash("Welcome! Please add a channel and set it as the default for your community members.", "info")
+
         return redirect(url_for('channel'))
 
     except Exception as e:
         logging.error(f"An error occurred during Whop login: {e}", exc_info=True)
         flash("An unexpected error occurred during login.", "error")
         return redirect(url_for('home'))
-    
+
 @app.route('/')
 def home():
     if 'user' in session:

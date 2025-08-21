@@ -35,7 +35,7 @@ COMMUNITY_PLANS = {
 }
 
 PLANS = {
-    'free': { 'name': 'Free', 'max_channels': 3, 'max_queries_per_month': 50 },
+    'free': { 'name': 'Free', 'max_channels': 0, 'max_queries_per_month': 50 },
     'creator': { 'name': 'Creator', 'max_channels': 10, 'max_queries_per_month': 2500 },
     'pro': { 'name': 'Pro', 'max_channels': float('inf'), 'max_queries_per_month': 10000 },
     'whop_basic_member': { 'name': 'Basic Member', 'max_channels': 2, 'max_queries_per_month': 50 },
@@ -172,8 +172,12 @@ def limit_enforcer(check_type: str):
                     if user_status.get('is_active_community_owner') and community_status['usage']['trial_queries_used'] < community_status['limits']['owner_trial_limit']:
                         return f(*args, **kwargs) # Owner is in trial period
 
+                    # If the limit is 0, it means no plan is active (and owner trial is over)
+                    if community_status['limits']['query_limit'] == 0 and not user_status.get('is_active_community_owner'):
+                        return jsonify({'status': 'limit_reached', 'message': "This community does not have an active plan. Please contact the owner."}), 403
+
                     if community_status['usage']['queries_used'] >= community_status['limits']['query_limit']:
-                        return jsonify({'status': 'limit_reached', 'message': "This community's query limit has been reached."}), 403
+                        return jsonify({'status': 'limit_reached', 'message': "This community's query limit has been reached for the month."}), 403
                 # For direct users, check personal limits
                 else:
                     if user_status['usage']['queries_this_month'] >= user_status['limits']['max_queries_per_month']:
