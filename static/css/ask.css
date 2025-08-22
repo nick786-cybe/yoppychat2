@@ -333,8 +333,14 @@
 /* =================================================================
    4. FORM & INPUT STYLES
 ================================================================== */
-.form-group { margin: 0; }
+.form-group {
+    margin: 0;
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-end;
+}
 .textarea-wrapper {
+    flex-grow: 1;
     position: relative;
     display: flex;
     align-items: flex-end;
@@ -571,7 +577,7 @@
 
 /* Add these new styles for the tone selector */
 .profile-setting {
-    margin-bottom: var(--spacing-md);
+    flex-shrink: 0;
 }
 .setting-title {
     font-size: 0.75rem;
@@ -588,8 +594,6 @@
     border-radius: var(--radius-md);
     padding: 4px;
     border: 1px solid var(--neutral-200);
-    max-width: 300px;
-    margin: 0 auto;
 }
 .tone-option {
     flex: 1;
