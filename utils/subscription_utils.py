@@ -72,6 +72,7 @@ def get_community_status(community_id: str) -> dict:
         'plan_name': plan_details['name'],
         'limits': {
             'shared_channel_limit': plan_details['shared_channels_allowed'],
+            'queries_per_month': plan_details.get('queries_per_month', 50),
             'query_limit': community_data.get('query_limit', 0),
             'owner_trial_limit': 10
         },
@@ -269,4 +270,5 @@ def community_channel_limit_enforcer(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
 
