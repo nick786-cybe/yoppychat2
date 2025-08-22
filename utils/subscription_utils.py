@@ -104,29 +104,9 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
     if not profile:
         return None
 
-    is_whop_user = bool(profile.get('whop_user_id'))
-    
-    # Determine the user's plan based on their type (Whop vs. regular)
-    raw_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
-    
-    if not raw_plan_id:
-        if is_whop_user and active_community_id:
-            # Whop members without a personal plan inherit a default member plan
-            # based on their community's subscription level.
-            community_status = get_community_status(active_community_id)
-            community_plan_id = community_status.get('plan_id') if community_status else 'basic_community'
-            
-            if community_plan_id == 'pro_community':
-                raw_plan_id = 'whop_pro_member'
-            elif community_plan_id == 'rich_community':
-                raw_plan_id = 'whop_rich_member'
-            else: # Default for 'basic_community' and any other case
-                raw_plan_id = 'whop_basic_member'
-        else:
-            # Regular users default to the 'free' plan.
-            raw_plan_id = 'free'
-            
-    plan_details = PLANS.get(raw_plan_id, PLANS['free']) # Fallback to 'free' just in case
+    # Determine personal plan limits (applies to both direct and Whop users)
+    plan_name = profile.get('personal_plan_id') or profile.get('direct_subscription_plan', 'free')
+    plan_limits = PLANS.get(plan_name, PLANS['free'])
 
     # Get personal usage stats
     usage_resp = supabase_admin.table('usage_stats').select('*').eq('user_id', user_id).maybe_single().execute()
@@ -134,13 +114,12 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
 
     status = {
         'user_id': user_id,
-        'plan_id': raw_plan_id,
-        'plan_name': plan_details['name'],
-        'is_whop_user': is_whop_user,
+        'plan_name': plan_limits['name'],
+        'is_whop_user': bool(profile.get('whop_user_id')),
         'active_community_id': active_community_id,
-        'is_active_community_owner': False,
-        'community_role': None,
-        'limits': plan_details,
+        'is_active_community_owner': False, # Default to false
+        'community_role': None, # Initialize the community role as None
+        'limits': plan_limits,
         'usage': {
             'queries_this_month': usage_data.get('queries_this_month', 0),
             'channels_processed': usage_data.get('channels_processed', 0)
@@ -153,14 +132,18 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
         if community_res.data and str(community_res.data['owner_user_id']) == str(user_id):
             status['is_active_community_owner'] = True
 
+        # --- NEW LOGIC TO FETCH AND SET THE COMMUNITY ROLE ---
+        # Get the role ('admin' or 'member') from the Whop API utility
         role = whop_api.get_user_role_in_company(user_id)
         status['community_role'] = role
+        # --- END OF NEW LOGIC ---
 
     if redis_client:
         serializable_status = json.loads(json.dumps(status).replace('Infinity', '"inf"'))
         redis_client.setex(cache_key, CACHE_DURATION_SECONDS, json.dumps(serializable_status))
 
     return status
+
 def limit_enforcer(check_type: str):
     """
     Decorator to enforce limits. Handles both direct users and community users.
@@ -266,6 +249,4 @@ def community_channel_limit_enforcer(f):
             }), 403
 
         return f(*args, **kwargs)
-
     return decorated_function
-
