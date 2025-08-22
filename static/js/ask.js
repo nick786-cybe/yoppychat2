@@ -182,6 +182,8 @@ function restoreButton(button, originalHTML, finalStateClass) {
 document.addEventListener('DOMContentLoaded', function() {
 
     // --- A. Element Selectors & Page Data ---
+    const toggleRightSidebarBtn = document.getElementById('toggle-right-sidebar-btn');
+    const desktopChatLayout = document.querySelector('.desktop-chat-layout');
     const questionForm = document.getElementById('questionForm');
     const questionText = document.getElementById('questionText');
     const submitBtn = document.getElementById('submitBtn');
@@ -489,7 +491,27 @@ document.addEventListener('DOMContentLoaded', function() {
         hamburgerBtnMobile.addEventListener('click', () => mainHamburger.click());
     }
 
-    // --- E. Initial Page Setup ---
+    // --- E. Sidebar Toggle Logic ---
+    if (toggleRightSidebarBtn && desktopChatLayout) {
+        const sidebarStateKey = 'rightSidebarCollapsed';
+
+        const applySidebarState = () => {
+            if (localStorage.getItem(sidebarStateKey) === 'true') {
+                desktopChatLayout.classList.add('right-sidebar-collapsed');
+            } else {
+                desktopChatLayout.classList.remove('right-sidebar-collapsed');
+            }
+        };
+
+        applySidebarState(); // Apply state on initial load
+
+        toggleRightSidebarBtn.addEventListener('click', () => {
+            const isCollapsed = desktopChatLayout.classList.toggle('right-sidebar-collapsed');
+            localStorage.setItem(sidebarStateKey, isCollapsed);
+        });
+    }
+
+    // --- F. Initial Page Setup ---
     const init = () => {
         if (questionText) {
             questionText.focus();
