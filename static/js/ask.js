@@ -71,6 +71,47 @@ window.clearChat = function(channel) {
 }
 
 /**
+ * Toggles a channel's privacy between personal and shared for community admins.
+ * @param {string} channelId - The ID of the channel to toggle.
+ * @param {boolean} isShared - The new desired state (true for shared, false for personal).
+ */
+window.toggleChannelPrivacy = function(channelId, isShared) {
+    const toggle = document.getElementById('shareToggle');
+    if(toggle) toggle.disabled = true;
+
+    fetch(`/api/toggle_channel_privacy/${channelId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(err => Promise.reject(err));
+        }
+        return res.json();
+    })
+    .then(data => {
+        if (window.showNotification) {
+            window.showNotification(data.message, 'success');
+        }
+        // A page reload is the simplest way to reflect the change everywhere (sidebar, etc.)
+        setTimeout(() => window.location.reload(), 1500);
+    })
+    .catch(err => {
+        if (window.showNotification) {
+            window.showNotification(err.message || 'An error occurred.', 'error');
+        }
+        // Revert the toggle state on failure
+        if(toggle) toggle.checked = !isShared;
+    })
+    .finally(() => {
+        // Keep it disabled on success because the page will reload
+        if(toggle && !document.querySelector('.notification.success')) {
+            toggle.disabled = false;
+        }
+    });
+}
+
+/**
  * Toggles the visibility of the sources list associated with a button.
  * @param {HTMLElement} btn - The button element that was clicked.
  */

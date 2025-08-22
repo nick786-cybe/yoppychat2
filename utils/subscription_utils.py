@@ -271,3 +271,45 @@ def community_channel_limit_enforcer(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+def admin_channel_limit_enforcer(f):
+    """
+    Decorator for community admins adding any channel (personal or shared).
+    Their total channel count is limited by the community plan's `shared_channels_allowed`.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
+
+        user_id = session['user']['id']
+        active_community_id = session.get('active_community_id')
+
+        if not active_community_id:
+            return jsonify({'status': 'error', 'message': 'No active community context found.'}), 400
+
+        user_status = get_user_status(user_id, active_community_id)
+
+        if not user_status.get('is_active_community_owner'):
+            # This should not be reached if routes are set up correctly, but as a safeguard.
+            return jsonify({'status': 'error', 'message': 'Only community owners can perform this action.'}), 403
+
+        community_status = get_community_status(active_community_id)
+        if not community_status:
+            return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
+
+        from . import db_utils
+        # Use the new unified channel counting function for the admin
+        current_total_channels = db_utils.count_channels_for_user(user_id)
+        # The admin's total limit is the community's shared channel limit
+        max_total_channels = community_status['limits'].get('shared_channel_limit', 0)
+
+        if current_total_channels >= max_total_channels:
+            return jsonify({
+                'status': 'limit_reached',
+                'message': f"As a community admin, your total channel limit is {max_total_channels}. You have reached this limit."
+            }), 403
+
+        return f(*args, **kwargs)
+
+    return decorated_function

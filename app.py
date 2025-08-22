@@ -12,7 +12,7 @@ from utils.supabase_client import get_supabase_client, get_supabase_admin_client
 from utils.history_utils import get_chat_history
 from utils.telegram_utils import set_webhook, get_bot_token_and_url
 from utils.config_utils import load_config
-from utils.subscription_utils import get_user_status, limit_enforcer, community_channel_limit_enforcer, get_community_status
+from utils.subscription_utils import get_user_status, limit_enforcer, community_channel_limit_enforcer, get_community_status, admin_channel_limit_enforcer
 from utils import db_utils
 import time
 import redis
@@ -591,13 +591,46 @@ def home():
 def channel():
     try:
         if request.method == 'POST':
-            # This route is now ONLY for members adding PERSONAL channels
+            # This route is now for adding PERSONAL channels, with different logic for admins vs. regular users.
             if 'user' not in session:
                 return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
 
-            @limit_enforcer('channel')
+            user_id = session['user']['id']
+            active_community_id = session.get('active_community_id')
+            user_status = get_user_status(user_id, active_community_id)
+
+            if not user_status:
+                return jsonify({'status': 'error', 'message': 'Could not verify user status.'}), 500
+
+            # --- Dynamically apply the correct limit logic ---
+            if user_status.get('is_active_community_owner'):
+                # Admin logic: check against unified channel limit
+                community_status = get_community_status(active_community_id)
+                if not community_status:
+                    return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
+
+                current_total_channels = db_utils.count_channels_for_user(user_id)
+                max_total_channels = community_status['limits'].get('shared_channel_limit', 0)
+
+                if current_total_channels >= max_total_channels:
+                    return jsonify({
+                        'status': 'limit_reached',
+                        'message': f"As a community admin, your total channel limit is {max_total_channels}. You have reached this limit."
+                    }), 403
+            else:
+                # Regular user logic: check against personal channel limit
+                max_channels = user_status['limits'].get('max_channels', 0)
+                current_channels = user_status['usage'].get('channels_processed', 0)
+                if max_channels != float('inf') and current_channels >= max_channels:
+                    message = f"You have reached the maximum of {int(max_channels)} personal channels for your plan."
+                    if user_status.get('is_whop_user'):
+                        return jsonify({'status': 'limit_reached', 'message': message, 'action': 'show_upgrade_popup'}), 403
+                    else:
+                        return jsonify({'status': 'limit_reached', 'message': message}), 403
+
+            # If limits are not reached, proceed with adding the channel
             def guarded_personal_channel_add():
-                user_id = session['user']['id']
+                user_id = session['user']['id'] # re-get user_id just in case
                 channel_url = request.form.get('channel_url', '').strip()
                 if not channel_url:
                     return jsonify({'status': 'error', 'message': 'Channel URL is required'}), 400
@@ -633,7 +666,7 @@ def channel():
 
 @app.route('/add_shared_channel', methods=['POST'])
 @login_required
-@community_channel_limit_enforcer
+@admin_channel_limit_enforcer
 def add_shared_channel():
     user_id = session['user']['id']
     community_id = session.get('active_community_id')
@@ -1006,6 +1039,57 @@ def privacy():
 @app.route('/terms')
 def terms():
     return render_template('terms.html', saved_channels=get_user_channels())
+
+@app.route('/api/toggle_channel_privacy/<int:channel_id>', methods=['POST'])
+@login_required
+def toggle_channel_privacy(channel_id):
+    """
+    Allows a community owner to toggle a channel between personal and shared.
+    """
+    user_id = session['user']['id']
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        # 1. Fetch the channel to get its community_id
+        channel_res = supabase_admin.table('channels').select('community_id, is_shared, user_id').eq('id', channel_id).single().execute()
+        if not channel_res.data:
+            return jsonify({'status': 'error', 'message': 'Channel not found.'}), 404
+
+        channel_data = channel_res.data
+        community_id = channel_data.get('community_id')
+
+        # A channel must belong to a community to be toggled. Also, only the original creator can toggle it.
+        if not community_id or str(channel_data.get('user_id')) != str(user_id):
+             return jsonify({'status': 'error', 'message': 'This action is not allowed for this channel.'}), 403
+
+        # 2. Verify the current user is the owner of that community
+        community_res = supabase_admin.table('communities').select('owner_user_id').eq('id', community_id).single().execute()
+        if not community_res.data or str(community_res.data.get('owner_user_id')) != str(user_id):
+            return jsonify({'status': 'error', 'message': 'You are not the owner of this community.'}), 403
+
+        # 3. If shared, check if it's the default channel. Default channels cannot be made private.
+        new_is_shared = not channel_data['is_shared']
+        if not new_is_shared: # If trying to make it private
+            community_details = supabase_admin.table('communities').select('default_channel_id').eq('id', community_id).single().execute()
+            if community_details.data and community_details.data.get('default_channel_id') == channel_id:
+                return jsonify({'status': 'error', 'message': 'You cannot make a default channel private. Set a different default channel first.'}), 400
+
+        # 4. Toggle the is_shared status
+        update_res = supabase_admin.table('channels').update({'is_shared': new_is_shared}).eq('id', channel_id).execute()
+
+        if not update_res.data:
+            raise Exception("Failed to update channel privacy.")
+
+        return jsonify({
+            'status': 'success',
+            'message': f"Channel is now {'shared' if new_is_shared else 'personal'}.",
+            'is_shared': new_is_shared
+        })
+
+    except Exception as e:
+        logging.error(f"Error toggling privacy for channel {channel_id}: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': 'An internal server error occurred.'}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -208,6 +208,24 @@
                     {% endif %}
             </div>
 
+            {% endif %}
+
+            {# --- NEW: Channel Privacy Toggle for Admins --- #}
+            {% if user_status.is_active_community_owner and current_channel.community_id == user_status.active_community_id and current_channel.user_id == user.id %}
+            <div class="admin-channel-settings">
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <label for="shareToggle">Share with Community</label>
+                        <p>When shared, all community members can see and chat with this channel.</p>
+                    </div>
+                    <label class="theme-switch large-switch">
+                        <input type="checkbox" id="shareToggle" {% if current_channel.is_shared %}checked{% endif %} onchange="toggleChannelPrivacy('{{ current_channel.id }}', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            {% endif %}
+
             {% if current_channel.topics %}
             <div class="profile-topics">
                 <h3 class="topics-title">Popular Topics</h3>

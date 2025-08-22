@@ -613,6 +613,43 @@
     box-shadow: var(--shadow-sm);
 }
 
+/* --- Admin Channel Settings --- */
+.admin-channel-settings {
+    border-top: 1px solid var(--neutral-200);
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-xl);
+}
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+}
+.setting-label label {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+.setting-label p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+.theme-switch.large-switch {
+    width: 52px;
+    height: 28px;
+    flex-shrink: 0;
+}
+.theme-switch.large-switch .slider:before {
+    height: 22px;
+    width: 22px;
+}
+.theme-switch.large-switch input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
 /* --- Right Sidebar Toggle --- */
 .sidebar-toggle-btn {
     display: none; /* Hidden by default, shown in media query */

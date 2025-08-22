@@ -91,6 +91,15 @@ def add_community(community_data: dict):
         log.error(f"Error adding community {community_data.get('whop_community_id')}: {e}")
         return None
 
+def count_channels_for_user(user_id: str) -> int:
+    """Counts the total number of channels (personal or shared) created by a specific user."""
+    try:
+        response = supabase.table('channels').select('id', count='exact').eq('user_id', user_id).execute()
+        return response.count or 0
+    except Exception as e:
+        log.error(f"Error counting channels for user {user_id}: {e}")
+        return 0
+
 def count_shared_channels(community_id: str) -> int:
     """Counts the number of shared channels for a given community."""
     try:
