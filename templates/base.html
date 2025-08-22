@@ -38,10 +38,26 @@
                 <div class="channel-section">
                     <div class="channel-section-title">Channels</div>
                     <div class="channel-list">
-                        {% if user_status and user_status.limits.max_channels > 0 %}
-                            <div class="add-channel-btn" onclick='location.href="{{ url_for("channel") }}"'>+ Add Channel</div>
-                        {% elif user_status and user_status.is_whop_user and not user_status.is_whop_pro %}
-                            <div class="add-channel-btn" onclick="showUpgradePopup()">+ Add Channel (Pro)</div>
+                        {% if user_status %}
+                            {% set can_add_personal = user_status.usage.channels_processed < user_status.limits.max_channels %}
+
+                            {# For community owners, check if they can add more shared channels #}
+                            {% set can_add_shared = False %}
+                            {% if user_status.is_active_community_owner %}
+                                {# This part requires fetching community status, which might be complex here.
+                                   Assuming a simple check for now, but a more robust solution might need a dedicated function.
+                                   Let's rely on the backend to enforce the limit and focus on the UI state.
+                                   For simplicity, we'll just check if they are an owner. #}
+                                {% set can_add_shared = True %}
+                            {% endif %}
+
+                            {% if can_add_personal or can_add_shared %}
+                                <div class="add-channel-btn" onclick='location.href="{{ url_for("channel") }}"'>+ Add Channel</div>
+                            {% elif user_status.is_whop_user %}
+                                <div class="add-channel-btn" onclick="showUpgradePopup('You have reached your channel limit. Please upgrade for more.')">+ Add Channel (Upgrade)</div>
+                            {% else %}
+                                <div class="add-channel-btn disabled">Channel Limit Reached</div>
+                            {% endif %}
                         {% endif %}
 
                         {% for name, channel in saved_channels.items() %}
@@ -50,7 +66,7 @@
                     </div>
                 </div>
             </div>
-            
+
             {% if user and not session.get('active_community_id') %}
             <div class="sidebar-actions-section">
                 <a href="{{ url_for('integrations') }}" class="sidebar-action-item">
@@ -93,7 +109,7 @@
                                     Subscription: {{ user_status.plan_name | title }}
                                 {% endif %}
                             </span>
-                            
+
                             {% if not user_status.active_community_id %}
                                 <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-btn">Upgrade</a>
                             {% endif %}
