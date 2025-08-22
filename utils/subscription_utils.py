@@ -113,8 +113,6 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
     
     if not raw_plan_id:
         if is_whop_user and active_community_id:
-            # Whop members without a personal plan inherit a default member plan
-            # based on their community's subscription level.
             community_status = get_community_status(active_community_id)
             community_plan_id = community_status.get('plan_id') if community_status else 'basic_community'
             
@@ -125,10 +123,9 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
             else: # Default for 'basic_community' and any other case
                 raw_plan_id = 'whop_basic_member'
         else:
-            # Regular users default to the 'free' plan.
             raw_plan_id = 'free'
             
-    plan_details = PLANS.get(raw_plan_id, PLANS['free']) # Fallback to 'free' just in case
+    plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
     # Get personal usage stats
     usage_resp = supabase_admin.table('usage_stats').select('*').eq('user_id', user_id).maybe_single().execute()
@@ -142,15 +139,19 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
         'active_community_id': active_community_id,
         'is_active_community_owner': False,
         'community_role': None,
-        'limits': plan_details,
+        'limits': plan_details.copy(), # Use copy to avoid modifying the original PLAN dict
         'usage': {
             'queries_this_month': usage_data.get('queries_this_month', 0),
             'channels_processed': usage_data.get('channels_processed', 0)
         }
     }
 
-    # If there's an active community, check ownership and determine the user's role
+    # If in a community, overwrite query limits with the community's per-user limit
     if active_community_id:
+        community_status = get_community_status(active_community_id)
+        if community_status:
+            status['limits']['max_queries_per_month'] = community_status['limits'].get('queries_per_month', 50)
+
         community_res = supabase_admin.table('communities').select('owner_user_id').eq('id', active_community_id).single().execute()
         if community_res.data and str(community_res.data['owner_user_id']) == str(user_id):
             status['is_active_community_owner'] = True
@@ -270,5 +271,6 @@ def community_channel_limit_enforcer(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
 
 
