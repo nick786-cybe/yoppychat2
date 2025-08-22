@@ -23,16 +23,17 @@ COMMUNITY_PLANS = {
     'basic_community': {
         'name': 'Basic Community',
         'shared_channels_allowed': 1,
+        'queries_per_month': 50
     },
     'pro_community': {
         'name': 'Pro Community',
         'shared_channels_allowed': 2,
+        'queries_per_month': 100
     },
     'rich_community': {
         'name': 'Rich Community',
         'shared_channels_allowed': 5,
-    }
-}
+        'queries_per_month': 250
 
 PLANS = {
     'free': { 'name': 'Free', 'max_channels': 0, 'max_queries_per_month': 50 },
@@ -268,3 +269,4 @@ def community_channel_limit_enforcer(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
