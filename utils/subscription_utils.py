@@ -35,7 +35,7 @@ COMMUNITY_PLANS = {
 }
 
 PLANS = {
-    'free': { 'name': 'Free', 'max_channels': 0, 'max_queries_per_month': 50 },
+    'free': { 'name': 'Free', 'max_channels': 1, 'max_queries_per_month': 50 },
     'creator': { 'name': 'Creator', 'max_channels': 10, 'max_queries_per_month': 2500 },
     'pro': { 'name': 'Pro', 'max_channels': float('inf'), 'max_queries_per_month': 10000 },
     'whop_basic_member': { 'name': 'Basic Member', 'max_channels': 2, 'max_queries_per_month': 50 },
@@ -249,4 +249,5 @@ def community_channel_limit_enforcer(f):
             }), 403
 
         return f(*args, **kwargs)
+
     return decorated_function
