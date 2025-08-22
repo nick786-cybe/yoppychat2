@@ -200,6 +200,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     <span>Clear Chat</span>
                 </a>
+                {% if user_status.is_active_community_owner and current_channel.is_shared and community_status.default_channel_id != current_channel.id %}
+                <a href="#" onclick="setDefaultChannel('{{ current_channel.id }}', this); return false;" class="action-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a8 8 0 0 1 14.08 0"/><path d="M1.42 12.55a8 8 0 0 1 14.08 0"/></svg>
+                    <span>Set as Default</span>
+                </a>
+                {% endif %}
                     {% if not session.get('active_community_id') %}
                     <a href="{{ url_for('integrations', channel_id=current_channel.id) }}" class="action-btn">
                         </a>

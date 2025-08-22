@@ -122,6 +122,15 @@ CREATE TABLE public.group_connections (
 );
 
 -- 3. Create RPC Functions
+CREATE OR REPLACE FUNCTION public.decrement_channel_count(p_user_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE public.usage_stats
+  SET channels_processed = channels_processed - 1
+  WHERE user_id = p_user_id AND channels_processed > 0;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION public.increment_query_usage(p_community_id UUID, p_is_trial BOOLEAN)
 RETURNS VOID AS $$
 BEGIN

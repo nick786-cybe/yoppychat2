@@ -470,6 +470,14 @@ def delete_channel_task(channel_id: int, user_id: str):
         print(f"--- [DELETE TASK STARTED] Unlinking Channel ID: {channel_id} from User ID: {user_id} ---")
         supabase_admin = get_supabase_admin_client()
 
+        # --- FIX: Decrement user's personal channel count if it's a personal channel ---
+        # We must do this BEFORE unlinking, while we can still easily check the channel's status.
+        channel_details_resp = supabase_admin.table('channels').select('is_shared').eq('id', channel_id).single().execute()
+        if channel_details_resp.data and not channel_details_resp.data.get('is_shared'):
+            print(f"Channel {channel_id} is a personal channel. Decrementing count for user {user_id}.")
+            supabase_admin.rpc('decrement_channel_count', {'p_user_id': user_id}).execute()
+        # --- END FIX ---
+
         # Step 1: Unlink the user from the channel.
         supabase_admin.table('user_channels').delete().match({
             'user_id': user_id,

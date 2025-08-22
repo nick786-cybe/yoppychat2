@@ -71,6 +71,39 @@ window.clearChat = function(channel) {
 }
 
 /**
+ * Sets a channel as the default for the community.
+ * @param {string} channelId - The ID of the channel to set as default.
+ * @param {HTMLElement} buttonElement - The button that was clicked.
+ */
+window.setDefaultChannel = function(channelId, buttonElement) {
+    if (!buttonElement || buttonElement.disabled) return;
+
+    const originalContent = buttonElement.innerHTML;
+    buttonElement.disabled = true;
+    buttonElement.innerHTML = `<div class="button-spinner" style="width:16px;height:16px;border-width:2px;"></div><span>Setting...</span>`;
+
+    fetch(`/set-default-channel/${channelId}`, { method: 'POST' })
+        .then(res => {
+            if (!res.ok) return res.json().then(err => Promise.reject(err));
+            return res.json();
+        })
+        .then(data => {
+            if (window.showNotification) {
+                window.showNotification(data.message, 'success');
+            }
+            setTimeout(() => window.location.reload(), 1500);
+        })
+        .catch(err => {
+            if (window.showNotification) {
+                window.showNotification(err.message || 'An error occurred.', 'error');
+            }
+            buttonElement.disabled = false;
+            buttonElement.innerHTML = originalContent;
+        });
+}
+
+
+/**
  * Toggles a channel's privacy between personal and shared for community admins.
  * @param {string} channelId - The ID of the channel to toggle.
  * @param {boolean} isShared - The new desired state (true for shared, false for personal).

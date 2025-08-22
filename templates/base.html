@@ -61,7 +61,7 @@
                         {% endif %}
 
                         {% for name, channel in saved_channels.items() %}
-                            {{ render_sidebar_channel_item(channel, name) }}
+                            {{ render_sidebar_channel_item(channel, name, community_status) }}
                         {% endfor %}
                     </div>
                 </div>
