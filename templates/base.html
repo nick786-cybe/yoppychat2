@@ -103,9 +103,23 @@
 
                         <div class="menu-plan-section">
                             <span class="menu-plan-name">
-                                {% if user_status.active_community_id and user_status.community_role %}
-                                    Community Role: <strong>{{ user_status.community_role | title }}</strong>
+                                {% if user_status.active_community_id %}
+                                    {# User is in a community context #}
+                                    {% if user_status.is_active_community_owner %}
+                                        {# Admin sees the community's plan #}
+                                        Subscription: {{ community_status.plan_name | title }}
+                                    {% else %}
+                                        {# Member's logic #}
+                                        {% if user_status.plan_id.startswith('whop_') %}
+                                            {# Member has their own upgraded plan, remove 'Whop ' prefix #}
+                                            Subscription: {{ user_status.plan_name.replace('Whop ', '') | title }}
+                                        {% else %}
+                                            {# Member uses the default community plan #}
+                                            Subscription: {{ community_status.plan_name | title }}
+                                        {% endif %}
+                                    {% endif %}
                                 {% else %}
+                                    {# User is a regular user #}
                                     Subscription: {{ user_status.plan_name | title }}
                                 {% endif %}
                             </span>

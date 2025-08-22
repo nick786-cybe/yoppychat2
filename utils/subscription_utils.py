@@ -105,8 +105,8 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
         return None
 
     # Determine personal plan limits (applies to both direct and Whop users)
-    raw_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan', 'free')
-    plan_details = PLANS.get(raw_plan_id, PLANS['free'])
+    plan_name = profile.get('personal_plan_id') or profile.get('direct_subscription_plan', 'free')
+    plan_limits = PLANS.get(plan_name, PLANS['free'])
 
     # Get personal usage stats
     usage_resp = supabase_admin.table('usage_stats').select('*').eq('user_id', user_id).maybe_single().execute()
@@ -114,8 +114,7 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
 
     status = {
         'user_id': user_id,
-        'plan_id': raw_plan_id,
-        'plan_name': plan_details['name'],
+        'plan_name': plan_limits['name'],
         'is_whop_user': bool(profile.get('whop_user_id')),
         'active_community_id': active_community_id,
         'is_active_community_owner': False, # Default to false
@@ -250,5 +249,4 @@ def community_channel_limit_enforcer(f):
             }), 403
 
         return f(*args, **kwargs)
-
     return decorated_function

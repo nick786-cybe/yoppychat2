@@ -53,12 +53,21 @@ except Exception:
 def inject_user_status():
     if 'user' in session:
         user_id = session['user']['id']
-        # Pass the active community ID from the session to the context processor
         active_community_id = session.get('active_community_id')
         user_status = get_user_status(user_id, active_community_id)
         is_embedded = session.get('is_embedded_whop_user', False)
-        return dict(user_status=user_status, user=session.get('user'), is_embedded_whop_user=is_embedded)
-    return dict(user_status=None, user=None, is_embedded_whop_user=False)
+
+        community_status = None
+        if active_community_id:
+            community_status = get_community_status(active_community_id)
+
+        return dict(
+            user_status=user_status,
+            user=session.get('user'),
+            is_embedded_whop_user=is_embedded,
+            community_status=community_status
+        )
+    return dict(user_status=None, user=None, is_embedded_whop_user=False, community_status=None)
 
 def get_user_channels():
     """
