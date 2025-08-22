@@ -91,15 +91,19 @@ def get_community_status(community_id: str) -> dict:
 
 def get_user_status(user_id: str, active_community_id: str = None) -> dict:
     """
-    Fetches a user's status, now aware of the active community context.
-    The cache key now includes the active_community_id to store different contexts.
+    Fetches a user's status with the final, corrected logic.
     """
     cache_key = f"user_status:{user_id}:community:{active_community_id or 'none'}"
     if redis_client:
         try:
             cached_status = redis_client.get(cache_key)
             if cached_status:
-                return json.loads(cached_status)
+                cached_data = json.loads(cached_status)
+                if cached_data.get('limits', {}).get('max_channels') == 'inf':
+                    cached_data['limits']['max_channels'] = float('inf')
+                if cached_data.get('limits', {}).get('max_queries_per_month') == 'inf':
+                    cached_data['limits']['max_queries_per_month'] = float('inf')
+                return cached_data
         except redis.RedisError as e:
             print(f"Redis GET error for user {user_id}: {e}. Fetching from DB.")
 
@@ -109,66 +113,75 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
         return None
 
     is_whop_user = bool(profile.get('whop_user_id'))
+    personal_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
+
     raw_plan_id = None
+    plan_details = {}
 
-    # New, corrected logic order
-    if is_whop_user and active_community_id:
-        # For Whop users in a community, the community plan is authoritative.
+    # 1. Determine the user's plan ID based on their status and subscriptions.
+    if personal_plan_id:
+        # User has a personal plan. Check if it's valid for their user type.
+        is_valid_plan = False
+        if is_whop_user and personal_plan_id.startswith('whop_'):
+            is_valid_plan = True
+        elif not is_whop_user and personal_plan_id in ['creator', 'pro', 'free']:
+            is_valid_plan = True
+
+        if is_valid_plan and personal_plan_id in PLANS:
+            raw_plan_id = personal_plan_id
+        else:
+            # Plan ID in DB is invalid or doesn't match user type. Fall through to defaults.
+            personal_plan_id = None # Nullify to trigger default logic.
+
+    if not raw_plan_id:
+        # User has no valid personal plan, determine default.
+        if is_whop_user and active_community_id:
+            raw_plan_id = 'community_base' # Virtual plan for default community members
+        elif is_whop_user:
+            raw_plan_id = 'whop_base' # Virtual plan for Whop users outside a community
+        else:
+            raw_plan_id = 'free'
+
+    # 2. Get the plan's limits and name.
+    if raw_plan_id == 'community_base':
         community_status = get_community_status(active_community_id)
-        community_plan_id = community_status.get('plan_id') if community_status else 'basic_community'
-
-        if community_plan_id == 'pro_community':
-            raw_plan_id = 'whop_pro_member'
-        elif community_plan_id == 'rich_community':
-            raw_plan_id = 'whop_rich_member'
-        else: # Default for 'basic_community' and any other case
-            raw_plan_id = 'whop_basic_member'
+        plan_details = {
+            'name': community_status.get('plan_name', 'Community Member') if community_status else 'Community Member',
+            'max_channels': 0,
+            'max_queries_per_month': community_status['limits'].get('queries_per_month', 50) if community_status else 50
+        }
+    elif raw_plan_id == 'whop_base':
+        plan_details = { 'name': 'Basic Member', 'max_channels': 0, 'max_queries_per_month': 50 }
     else:
-        # For everyone else (regular users, or Whop users not in a community), check for a personal plan first.
-        raw_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
-        if not raw_plan_id:
-            # If no personal plan, then assign defaults.
-            if is_whop_user:
-                raw_plan_id = 'whop_basic_member' # Whop user outside a community context
-            else:
-                raw_plan_id = 'free' # Regular non-paying user
+        # It's a real plan from the PLANS dict.
+        plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
-    plan_details = PLANS.get(raw_plan_id, PLANS['free'])
-
-    # Get personal usage stats
-    usage_resp = supabase_admin.table('usage_stats').select('*').eq('user_id', user_id).maybe_single().execute()
-    usage_data = usage_resp.data if hasattr(usage_resp, 'data') and usage_resp.data else {}
-
+    # 3. Construct the final status object. No more stacking or overwrites needed.
     status = {
         'user_id': user_id,
         'plan_id': raw_plan_id,
-        'plan_name': plan_details['name'],
+        'plan_name': plan_details.get('name', 'Unknown Plan'),
+        'has_personal_plan': bool(personal_plan_id),
         'is_whop_user': is_whop_user,
         'active_community_id': active_community_id,
         'is_active_community_owner': False,
         'community_role': None,
-        'limits': plan_details.copy(), # Use copy to avoid modifying the original PLAN dict
+        'limits': plan_details.copy(),
         'usage': {
-            'queries_this_month': usage_data.get('queries_this_month', 0),
-            'channels_processed': usage_data.get('channels_processed', 0)
+            'queries_this_month': get_profile(user_id).get('queries_this_month', 0),
+            'channels_processed': get_profile(user_id).get('channels_processed', 0)
         }
     }
 
-    # If in a community, overwrite query limits with the community's per-user limit
     if active_community_id:
-        community_status = get_community_status(active_community_id)
-        if community_status:
-            status['limits']['max_queries_per_month'] = community_status['limits'].get('queries_per_month', 50)
-
         community_res = supabase_admin.table('communities').select('owner_user_id').eq('id', active_community_id).single().execute()
         if community_res.data and str(community_res.data['owner_user_id']) == str(user_id):
             status['is_active_community_owner'] = True
-
         role = whop_api.get_user_role_in_company(user_id)
         status['community_role'] = role
 
     if redis_client:
-        serializable_status = json.loads(json.dumps(status).replace('Infinity', '"inf"'))
+        serializable_status = json.loads(json.dumps(status, default=lambda o: 'inf' if o == float('inf') else o))
         redis_client.setex(cache_key, CACHE_DURATION_SECONDS, json.dumps(serializable_status))
 
     return status
@@ -192,20 +205,18 @@ def limit_enforcer(check_type: str):
 
             # --- Query Limit Logic ---
             if check_type == 'query':
-                # This logic now works for ALL users, including community members,
-                # because get_user_status now puts the correct per-user query limit
-                # into the user_status object.
-                if user_status['usage']['queries_this_month'] >= user_status['limits']['max_queries_per_month']:
+                max_queries = user_status['limits'].get('max_queries_per_month', 0)
+                if max_queries != float('inf') and user_status['usage']['queries_this_month'] >= max_queries:
                     return jsonify({
                         'status': 'limit_reached',
-                        'message': f"You've reached your monthly query limit of {int(user_status['limits']['max_queries_per_month'])}."
+                        'message': f"You've reached your monthly query limit of {int(max_queries)}."
                     }), 403
 
             # --- Personal Channel Limit Logic ---
             elif check_type == 'channel':
                 max_channels = user_status['limits'].get('max_channels', 0)
                 current_channels = user_status['usage'].get('channels_processed', 0)
-                if current_channels >= max_channels:
+                if max_channels != float('inf') and current_channels >= max_channels:
                     message = f"You have reached the maximum of {max_channels} personal channels for your plan."
                     if user_status.get('is_whop_user'):
                         return jsonify({
