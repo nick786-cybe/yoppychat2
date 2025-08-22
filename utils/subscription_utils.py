@@ -164,6 +164,7 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
         redis_client.setex(cache_key, CACHE_DURATION_SECONDS, json.dumps(serializable_status))
 
     return status
+    
 def limit_enforcer(check_type: str):
     """
     Decorator to enforce limits. Handles both direct users and community users.
@@ -183,52 +184,32 @@ def limit_enforcer(check_type: str):
             
             # --- Query Limit Logic ---
             if check_type == 'query':
-                # For Whop users, check community limits
-                if active_community_id:
-                    community_status = get_community_status(active_community_id)
-                    if not community_status:
-                        return jsonify({'status': 'error', 'message': 'Active community not found.'}), 404
+                # This logic now works for ALL users, including community members,
+                # because get_user_status now puts the correct per-user query limit
+                # into the user_status object.
+                if user_status['usage']['queries_this_month'] >= user_status['limits']['max_queries_per_month']:
+                    return jsonify({
+                        'status': 'limit_reached',
+                        'message': f"You've reached your monthly query limit of {int(user_status['limits']['max_queries_per_month'])}."
+                    }), 403
 
-                    if user_status.get('is_active_community_owner') and community_status['usage']['trial_queries_used'] < community_status['limits']['owner_trial_limit']:
-                        return f(*args, **kwargs) # Owner is in trial period
-
-                    # --- REFINED LOGIC ---
-                    # Check if the community's plan has no queries (trial ended and no paid plan)
-                    if community_status['limits']['query_limit'] == 0:
-                        # For the owner, the trial has expired.
-                        if user_status.get('is_active_community_owner'):
-                             return jsonify({
-                                'status': 'limit_reached',
-                                'message': "Your trial has ended. Please subscribe to a community plan to continue."
-                            }), 403
-                        # For members of that community.
-                        else:
-                            return jsonify({
-                                'status': 'limit_reached',
-                                'message': "This community does not have an active plan. Please contact the owner."
-                            }), 403
-
-                    # Check if the community has used all its monthly queries
-                    if community_status['usage']['queries_used'] >= community_status['limits']['query_limit']:
-                        return jsonify({
-                            'status': 'limit_reached',
-                            'message': "This community's query limit has been reached for the month."
-                        }), 403
-                # For direct users, check personal limits
-                else:
-                    if user_status['usage']['queries_this_month'] >= user_status['limits']['max_queries_per_month']:
-                        return jsonify({'status': 'limit_reached', 'message': f"You've reached your monthly query limit of {user_status['limits']['max_queries_per_month']}."}), 403
-
-            # --- Personal Channel Limit Logic (for all users) ---
+            # --- Personal Channel Limit Logic ---
             elif check_type == 'channel':
                 max_channels = user_status['limits'].get('max_channels', 0)
                 current_channels = user_status['usage'].get('channels_processed', 0)
                 if current_channels >= max_channels:
-                    return jsonify({
-                        'status': 'limit_reached',
-                        'message': f"You have reached the maximum of {max_channels} personal channels for your plan.",
-                        'action': 'upgrade_personal_plan' # More specific action
-                    }), 403
+                    message = f"You have reached the maximum of {max_channels} personal channels for your plan."
+                    if user_status.get('is_whop_user'):
+                        return jsonify({
+                            'status': 'limit_reached',
+                            'message': message,
+                            'action': 'show_upgrade_popup'
+                        }), 403
+                    else:
+                        return jsonify({
+                            'status': 'limit_reached',
+                            'message': message
+                        }), 403
 
             return f(*args, **kwargs)
         return decorated_function
@@ -271,6 +252,7 @@ def community_channel_limit_enforcer(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
 
 
 
