@@ -11,11 +11,9 @@ log = logging.getLogger(__name__)
 def get_profile(user_id: str):
     """Fetches a user's complete profile data."""
     try:
-        # --- THIS IS THE FIX ---
-        # Use maybe_single() to prevent an error if the profile doesn't exist yet.
         response = supabase.table('profiles').select('*').eq('id', user_id).maybe_single().execute()
-        # --- END FIX ---
-        return response.data
+        # Add a check to ensure response is not None before accessing .data
+        return response.data if response else None
     except Exception as e:
         log.error(f"Error getting profile for user {user_id}: {e}")
         return None
@@ -31,16 +29,6 @@ def link_user_to_community(user_id: str, community_id: str):
     except Exception as e:
         log.error(f"Error linking user {user_id} to community {community_id}: {e}")
         return False
-
-def get_profile(user_id: str):
-    """Fetches a user's complete profile data."""
-    try:
-        response = supabase.table('profiles').select('*').eq('id', user_id).maybe_single().execute()
-        # Add a check to ensure response is not None before accessing .data
-        return response.data if response else None
-    except Exception as e:
-        log.error(f"Error getting profile for user {user_id}: {e}")
-        return None
 
 def find_channel_by_url(channel_url: str):
     """Checks if a channel already exists in the master channels table."""
@@ -123,7 +111,7 @@ def increment_community_query_usage(community_id: str, is_trial: bool):
         supabase.rpc('increment_query_usage', params).execute()
     except Exception as e:
         log.error(f"Error incrementing query usage for community {community_id}: {e}")
-    
+
 def create_initial_usage_stats(user_id: str):
     """Creates the initial usage_stats row for a new user."""
     try:
@@ -133,23 +121,23 @@ def create_initial_usage_stats(user_id: str):
     except Exception as e:
         log.error(f"Error creating initial usage stats for user {user_id}: {e}")
         return False
-    
+
 def create_or_update_profile(profile_data: dict):
     """Creates or updates a user profile. Used for both direct and Whop users."""
     try:
         # Using upsert is efficient. It will update if 'id' exists, or insert if it doesn't.
         response = supabase.table('profiles').upsert(profile_data).execute()
-        
+
         # Check if the upsert was successful
         if response.data:
             print(f"Successfully upserted profile for user ID: {profile_data.get('id')}")
             return response.data[0]
-        
+
         # If upsert fails or returns no data, attempt a direct select
         user_id = profile_data.get('id')
         if user_id:
             return get_profile(user_id)
-            
+
         return None
     except Exception as e:
         log.error(f"Error upserting profile: {e}")

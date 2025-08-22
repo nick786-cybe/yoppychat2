@@ -107,7 +107,7 @@
                             </p>
                         </div>
 
-                        {% if not user_status.active_community_id and user_status.plan_id != 'pro' %}
+                        {% if user_status.plan_id != 'pro' %}
                         <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-button">
                             <span>✨ Upgrade Plan</span>
                         </a>

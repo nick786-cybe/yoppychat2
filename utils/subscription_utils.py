@@ -109,26 +109,30 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
         return None
 
     is_whop_user = bool(profile.get('whop_user_id'))
-    
-    # Determine the user's plan based on their type (Whop vs. regular)
-    raw_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
-    
-    if not raw_plan_id:
-        if is_whop_user and active_community_id:
-            community_status = get_community_status(active_community_id)
-            community_plan_id = community_status.get('plan_id') if community_status else 'basic_community'
-            
-            if community_plan_id == 'pro_community':
-                raw_plan_id = 'whop_pro_member'
-            elif community_plan_id == 'rich_community':
-                raw_plan_id = 'whop_rich_member'
-            else: # Default for 'basic_community' and any other case
-                raw_plan_id = 'whop_basic_member'
-        elif is_whop_user:
-            raw_plan_id = 'whop_basic_member' # Default for Whop users not in a community context
-        else:
-            raw_plan_id = 'free' # Default for non-Whop users
-            
+    raw_plan_id = None
+
+    # New, corrected logic order
+    if is_whop_user and active_community_id:
+        # For Whop users in a community, the community plan is authoritative.
+        community_status = get_community_status(active_community_id)
+        community_plan_id = community_status.get('plan_id') if community_status else 'basic_community'
+
+        if community_plan_id == 'pro_community':
+            raw_plan_id = 'whop_pro_member'
+        elif community_plan_id == 'rich_community':
+            raw_plan_id = 'whop_rich_member'
+        else: # Default for 'basic_community' and any other case
+            raw_plan_id = 'whop_basic_member'
+    else:
+        # For everyone else (regular users, or Whop users not in a community), check for a personal plan first.
+        raw_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
+        if not raw_plan_id:
+            # If no personal plan, then assign defaults.
+            if is_whop_user:
+                raw_plan_id = 'whop_basic_member' # Whop user outside a community context
+            else:
+                raw_plan_id = 'free' # Regular non-paying user
+
     plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
     # Get personal usage stats
@@ -178,14 +182,14 @@ def limit_enforcer(check_type: str):
         def decorated_function(*args, **kwargs):
             if 'user' not in session:
                 return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
-            
+
             user_id = session['user']['id']
             active_community_id = session.get('active_community_id')
             user_status = get_user_status(user_id, active_community_id)
 
             if not user_status:
                  return jsonify({'status': 'error', 'message': 'Could not verify user.'}), 500
-            
+
             # --- Query Limit Logic ---
             if check_type == 'query':
                 # This logic now works for ALL users, including community members,
@@ -256,4 +260,3 @@ def community_channel_limit_enforcer(f):
         return f(*args, **kwargs)
 
     return decorated_function
-
