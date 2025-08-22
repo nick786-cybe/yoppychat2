@@ -71,6 +71,7 @@ def get_community_status(community_id: str) -> dict:
         'plan_name': plan_details['name'],
         'limits': {
             'shared_channel_limit': plan_details['shared_channels_allowed'],
+            'queries_per_month': plan_details.get('queries_per_month', 50),
             'query_limit': community_data.get('query_limit', 0),
             'owner_trial_limit': 10
         },
@@ -104,9 +105,26 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
     if not profile:
         return None
 
-    # Determine personal plan limits (applies to both direct and Whop users)
-    plan_name = profile.get('personal_plan_id') or profile.get('direct_subscription_plan', 'free')
-    plan_limits = PLANS.get(plan_name, PLANS['free'])
+    is_whop_user = bool(profile.get('whop_user_id'))
+    
+    # Determine the user's plan based on their type (Whop vs. regular)
+    raw_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
+    
+    if not raw_plan_id:
+        if is_whop_user and active_community_id:
+            community_status = get_community_status(active_community_id)
+            community_plan_id = community_status.get('plan_id') if community_status else 'basic_community'
+            
+            if community_plan_id == 'pro_community':
+                raw_plan_id = 'whop_pro_member'
+            elif community_plan_id == 'rich_community':
+                raw_plan_id = 'whop_rich_member'
+            else: # Default for 'basic_community' and any other case
+                raw_plan_id = 'whop_basic_member'
+        else:
+            raw_plan_id = 'free'
+            
+    plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
     # Get personal usage stats
     usage_resp = supabase_admin.table('usage_stats').select('*').eq('user_id', user_id).maybe_single().execute()
@@ -114,29 +132,31 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
 
     status = {
         'user_id': user_id,
-        'plan_name': plan_limits['name'],
-        'is_whop_user': bool(profile.get('whop_user_id')),
+        'plan_id': raw_plan_id,
+        'plan_name': plan_details['name'],
+        'is_whop_user': is_whop_user,
         'active_community_id': active_community_id,
-        'is_active_community_owner': False, # Default to false
-        'community_role': None, # Initialize the community role as None
-        'limits': plan_limits,
+        'is_active_community_owner': False,
+        'community_role': None,
+        'limits': plan_details.copy(), # Use copy to avoid modifying the original PLAN dict
         'usage': {
             'queries_this_month': usage_data.get('queries_this_month', 0),
             'channels_processed': usage_data.get('channels_processed', 0)
         }
     }
 
-    # If there's an active community, check ownership and determine the user's role
+    # If in a community, overwrite query limits with the community's per-user limit
     if active_community_id:
+        community_status = get_community_status(active_community_id)
+        if community_status:
+            status['limits']['max_queries_per_month'] = community_status['limits'].get('queries_per_month', 50)
+
         community_res = supabase_admin.table('communities').select('owner_user_id').eq('id', active_community_id).single().execute()
         if community_res.data and str(community_res.data['owner_user_id']) == str(user_id):
             status['is_active_community_owner'] = True
 
-        # --- NEW LOGIC TO FETCH AND SET THE COMMUNITY ROLE ---
-        # Get the role ('admin' or 'member') from the Whop API utility
         role = whop_api.get_user_role_in_company(user_id)
         status['community_role'] = role
-        # --- END OF NEW LOGIC ---
 
     if redis_client:
         serializable_status = json.loads(json.dumps(status).replace('Infinity', '"inf"'))
@@ -163,52 +183,32 @@ def limit_enforcer(check_type: str):
             
             # --- Query Limit Logic ---
             if check_type == 'query':
-                # For Whop users, check community limits
-                if active_community_id:
-                    community_status = get_community_status(active_community_id)
-                    if not community_status:
-                        return jsonify({'status': 'error', 'message': 'Active community not found.'}), 404
+                # This logic now works for ALL users, including community members,
+                # because get_user_status now puts the correct per-user query limit
+                # into the user_status object.
+                if user_status['usage']['queries_this_month'] >= user_status['limits']['max_queries_per_month']:
+                    return jsonify({
+                        'status': 'limit_reached',
+                        'message': f"You've reached your monthly query limit of {int(user_status['limits']['max_queries_per_month'])}."
+                    }), 403
 
-                    if user_status.get('is_active_community_owner') and community_status['usage']['trial_queries_used'] < community_status['limits']['owner_trial_limit']:
-                        return f(*args, **kwargs) # Owner is in trial period
-
-                    # --- REFINED LOGIC ---
-                    # Check if the community's plan has no queries (trial ended and no paid plan)
-                    if community_status['limits']['query_limit'] == 0:
-                        # For the owner, the trial has expired.
-                        if user_status.get('is_active_community_owner'):
-                             return jsonify({
-                                'status': 'limit_reached',
-                                'message': "Your trial has ended. Please subscribe to a community plan to continue."
-                            }), 403
-                        # For members of that community.
-                        else:
-                            return jsonify({
-                                'status': 'limit_reached',
-                                'message': "This community does not have an active plan. Please contact the owner."
-                            }), 403
-
-                    # Check if the community has used all its monthly queries
-                    if community_status['usage']['queries_used'] >= community_status['limits']['query_limit']:
-                        return jsonify({
-                            'status': 'limit_reached',
-                            'message': "This community's query limit has been reached for the month."
-                        }), 403
-                # For direct users, check personal limits
-                else:
-                    if user_status['usage']['queries_this_month'] >= user_status['limits']['max_queries_per_month']:
-                        return jsonify({'status': 'limit_reached', 'message': f"You've reached your monthly query limit of {user_status['limits']['max_queries_per_month']}."}), 403
-
-            # --- Personal Channel Limit Logic (for all users) ---
+            # --- Personal Channel Limit Logic ---
             elif check_type == 'channel':
                 max_channels = user_status['limits'].get('max_channels', 0)
                 current_channels = user_status['usage'].get('channels_processed', 0)
                 if current_channels >= max_channels:
-                    return jsonify({
-                        'status': 'limit_reached',
-                        'message': f"You have reached the maximum of {max_channels} personal channels for your plan.",
-                        'action': 'upgrade_personal_plan' # More specific action
-                    }), 403
+                    message = f"You have reached the maximum of {max_channels} personal channels for your plan."
+                    if user_status.get('is_whop_user'):
+                        return jsonify({
+                            'status': 'limit_reached',
+                            'message': message,
+                            'action': 'show_upgrade_popup'
+                        }), 403
+                    else:
+                        return jsonify({
+                            'status': 'limit_reached',
+                            'message': message
+                        }), 403
 
             return f(*args, **kwargs)
         return decorated_function
@@ -249,4 +249,5 @@ def community_channel_limit_enforcer(f):
             }), 403
 
         return f(*args, **kwargs)
+
     return decorated_function
