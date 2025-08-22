@@ -204,20 +204,11 @@ def limit_enforcer(check_type: str):
                 max_channels = user_status['limits'].get('max_channels', 0)
                 current_channels = user_status['usage'].get('channels_processed', 0)
                 if current_channels >= max_channels:
-                    message = f"You have reached the maximum of {max_channels} personal channels for your plan."
-                    # Only show the upgrade popup action for Whop users
-                    if user_status.get('is_whop_user'):
-                        return jsonify({
-                            'status': 'limit_reached',
-                            'message': message,
-                            'action': 'show_upgrade_popup'
-                        }), 403
-                    else:
-                        # For regular users, just show the message
-                        return jsonify({
-                            'status': 'limit_reached',
-                            'message': message
-                        }), 403
+                    return jsonify({
+                        'status': 'limit_reached',
+                        'message': f"You have reached the maximum of {max_channels} personal channels for your plan.",
+                        'action': 'upgrade_personal_plan' # More specific action
+                    }), 403
 
             return f(*args, **kwargs)
         return decorated_function
@@ -258,5 +249,4 @@ def community_channel_limit_enforcer(f):
             }), 403
 
         return f(*args, **kwargs)
-
     return decorated_function
