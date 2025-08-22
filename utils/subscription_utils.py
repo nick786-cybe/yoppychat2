@@ -124,8 +124,10 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
                 raw_plan_id = 'whop_rich_member'
             else: # Default for 'basic_community' and any other case
                 raw_plan_id = 'whop_basic_member'
+        elif is_whop_user:
+            raw_plan_id = 'whop_basic_member' # Default for Whop users not in a community context
         else:
-            raw_plan_id = 'free'
+            raw_plan_id = 'free' # Default for non-Whop users
             
     plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
