@@ -100,35 +100,76 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkTaskStatus(taskId) {
+        const processingCard = document.querySelector(`.channel-item-wrapper[data-task-id="${taskId}"]`);
+
         fetch(`/task_result/${taskId}`)
             .then(res => res.json())
             .then(data => {
-                // If the user navigated away or the view was reset, stop polling
-                if (processingContainer.style.display === 'none') {
+                if (data.status === 'complete') {
                     stopPolling(taskId);
-                    return;
-                }
+                    // Hide the main processing container and show the form again
+                    showFormView(true);
 
-                // Update the progress bar and status text
-                if (progressBar) progressBar.style.width = `${data.progress || 0}%`;
-                if (progressText) progressText.textContent = data.message || 'Processing...';
+                    const channelName = processingCard ? processingCard.dataset.channelName : null;
+                    if (channelName) {
+                        // Fetch final details to build the 'ready' card
+                        fetch(`/api/channel_details/${channelName}`)
+                            .then(res => res.json())
+                            .then(details => {
+                                if (details.current_channel && processingCard) {
+                                    const newCard = document.createElement('div');
+                                    newCard.className = 'channel-item-wrapper';
+                                    newCard.dataset.channelId = details.current_channel.id;
 
-                // When the task is done, show a message and reload the page
-                if (data.status === 'complete' || data.status === 'failed') {
+                                    const thumbnailHtml = details.current_channel.channel_thumbnail
+                                        ? `<img src="${details.current_channel.channel_thumbnail}" alt="${channelName}" class="channel-avatar">`
+                                        : '';
+
+                                    newCard.innerHTML = `
+                                        <a href="/ask/channel/${channelName}" class="channel-link">
+                                            ${thumbnailHtml}
+                                            <span class="channel-name">${channelName}</span>
+                                        </a>
+                                        <button class="delete-btn" onclick="confirmDeleteChannel('${details.current_channel.id}', '${channelName}', this)" aria-label="Delete ${channelName}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                    `;
+                                    processingCard.replaceWith(newCard);
+                                    showNotification(data.message || `Channel '${channelName}' is ready!`, 'success');
+                                } else {
+                                    // Fallback to reload if details fetch fails
+                                    showNotification('Channel processed. Reloading page...', 'success');
+                                    setTimeout(() => window.location.reload(), 1500);
+                                }
+                            })
+                            .catch(() => {
+                                showNotification('Channel processed. Reloading page...', 'success');
+                                setTimeout(() => window.location.reload(), 1500);
+                            });
+                    } else {
+                        // Fallback to reload if no channel name is found
+                        showNotification('Channel processed. Reloading page...', 'success');
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                } else if (data.status === 'failed') {
                     stopPolling(taskId);
-                    const message = data.message || (data.status === 'complete' ? 'Channel processed successfully!' : 'A processing error occurred.');
-                    const type = data.status === 'complete' ? 'success' : 'error';
-                    showNotification(message, type);
-
-                    // Reload to show a clean page state
-                    setTimeout(() => window.location.reload(), 2500);
+                    showNotification(data.message || 'A processing error occurred.', 'error');
+                    if (processingCard) processingCard.remove();
+                    showFormView(true); // Show form again
+                } else {
+                    // Update progress bar if the main container is visible
+                    if (processingContainer.style.display !== 'none') {
+                        if (progressBar) progressBar.style.width = `${data.progress || 0}%`;
+                        if (progressText) progressText.textContent = data.message || 'Processing...';
+                    }
                 }
             })
             .catch(err => {
                 console.error('Polling error:', err);
                 stopPolling(taskId);
-                showNotification('Error checking task status. Reloading.', 'error');
-                window.location.reload();
+                if (processingCard) processingCard.remove();
+                showFormView(true);
+                showNotification('Error checking task status.', 'error');
             });
     }
 
@@ -166,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const newCard = document.createElement('div');
                     newCard.className = 'channel-item-wrapper processing';
                     newCard.dataset.taskId = data.task_id;
+                    newCard.dataset.channelName = channelName;
                     newCard.innerHTML = `
                         <a href="#" class="channel-link" onclick="return false;">
                             <div class="channel-avatar-spinner"></div>
