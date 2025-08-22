@@ -96,49 +96,23 @@
 
                     {% if user and user_status %}
                     <div class="profile-menu" id="user-profile-menu">
-                        <div class="menu-header">
-                            <div class="menu-username">{{ session.user.user_metadata.full_name or "User" }}</div>
-                            <div class="menu-email">{{ session.user.email }}</div>
-                        </div>
-
-                        <div class="menu-plan-section">
-                            <span class="menu-plan-name">
-                                {% if user_status.active_community_id %}
-                                    {# User is in a community context #}
-                                    {% if user_status.is_active_community_owner %}
-                                        {# Admin sees the community's plan #}
-                                        Subscription: {{ community_status.plan_name | title }}
-                                    {% else %}
-                                        {# Member's logic #}
-                                        {% if user_status.plan_id.startswith('whop_') %}
-                                            {# Member has their own upgraded plan, remove 'Whop ' prefix #}
-                                            Subscription: {{ user_status.plan_name.replace('Whop ', '') | title }}
-                                        {% else %}
-                                            {# Member uses the default community plan #}
-                                            Subscription: {{ community_status.plan_name | title }}
-                                        {% endif %}
-                                    {% endif %}
-                                {% else %}
-                                    {# User is a regular user #}
-                                    Subscription: {{ user_status.plan_name | title }}
-                                {% endif %}
-                            </span>
-
-                            {% if not user_status.active_community_id %}
-                                <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-btn">Upgrade</a>
-                            {% endif %}
-                        </div>
-
-                        <div class="menu-credits-section">
-                            <span class="menu-credits-label">Remaining Queries</span>
-                            <span class="menu-credits-value">
+                        <div class="menu-plan-display">
+                            <div class="plan-badge">{{ user_status.plan_name | title }} Plan</div>
+                            <p class="plan-queries">
                                 {% if user_status.limits.max_queries_per_month|string() == 'inf' %}
-                                    Unlimited
+                                    You have <strong>Unlimited</strong> queries.
                                 {% else %}
-                                    {{ user_status.limits.max_queries_per_month - user_status.usage.queries_this_month }}
+                                    You have <strong>{{ (user_status.limits.max_queries_per_month - user_status.usage.queries_this_month) | int }}</strong> queries remaining.
                                 {% endif %}
-                            </span>
+                            </p>
                         </div>
+
+                        {% if not user_status.active_community_id and user_status.plan_id != 'pro' %}
+                        <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-button">
+                            <span>✨ Upgrade Plan</span>
+                        </a>
+                        {% endif %}
+
                         <ul class="menu-links">
                             {% if not is_embedded_whop_user %}
                              <li><a href="{{ url_for('about') }}">About</a></li>

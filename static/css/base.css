@@ -147,6 +147,59 @@
     z-index: 1001;
 }
 
+/* --- New Profile Menu Styles --- */
+.menu-plan-display {
+    background-color: var(--surface-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--neutral-200);
+}
+
+.plan-badge {
+    display: inline-block;
+    background-color: var(--accent-primary-light);
+    color: var(--accent-primary);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-sm);
+}
+
+.plan-queries {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.plan-queries strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.menu-upgrade-button {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    margin-bottom: var(--spacing-md);
+    border: none;
+}
+
+.menu-upgrade-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    opacity: 0.95;
+}
+
 #profile-container:hover .profile-menu, .profile-menu.show {
     display: block;
 }
