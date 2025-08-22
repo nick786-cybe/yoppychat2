@@ -208,8 +208,6 @@
                     {% endif %}
             </div>
 
-            {% endif %}
-
             {# --- NEW: Channel Privacy Toggle for Admins --- #}
             {% if user_status.is_active_community_owner and current_channel.community_id == user_status.active_community_id and current_channel.user_id == user.id %}
             <div class="admin-channel-settings">
