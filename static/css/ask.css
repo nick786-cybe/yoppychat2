@@ -38,7 +38,6 @@
 .desktop-chat-layout {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--spacing-md);
     height: 100%;
     flex: 1;
     min-height: 0;
@@ -101,12 +100,11 @@
 @media (min-width: 769px) {
     .desktop-chat-layout {
         grid-template-columns: 1fr 320px;
-        gap: var(--spacing-lg);
     }
     .chat-sidebar-right {
         position: sticky;
         top: 0;
-        max-height: 100vh;
+        max-height: 100%;
     }
 }
 

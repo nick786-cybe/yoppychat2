@@ -1478,13 +1478,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         box-shadow: none;
         border: none;
         background: transparent;
-        padding: var(--spacing-sm);
+        padding: 0px;
     }
     /* 3. The main grid container (REMOVE overflow: hidden) */
     .desktop-chat-layout {
         display: grid;
         grid-template-columns: 1fr 360px; /* Right sidebar is 360px */
-        gap: var(--spacing-xl);
+        gap: 0px;
         height: 100%;
     }
     /* 4. The chat column (left side) now has a defined height to fill */
@@ -1538,7 +1538,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     }
     .main-content.has-mobile-nav .card {
         height: 100%;
-        padding: var(--spacing-sm);
     }
     .desktop-chat-layout {
         height: 100%;
