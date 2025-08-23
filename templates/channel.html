@@ -40,12 +40,7 @@
                 </div>
             </div>
 
-            {% if user_status and user_status.is_active_community_owner %}
-            <div class="form-group" style="text-align: left; max-width: 500px; margin: 0 auto 1.5rem auto; display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(255, 154, 86, 0.05); border-radius: 12px;">
-                <input type="checkbox" id="is_shared_channel" name="is_shared_channel" style="width: 18px; height: 18px; accent-color: var(--accent-primary);">
-                <label for="is_shared_channel" style="font-weight: 500; color: var(--text-secondary);">Add as a shared channel for your community</label>
-            </div>
-            {% endif %}
+
 
             <button type="submit" class="process-btn">
                 <span class="btn-icon">🚀</span>

@@ -71,6 +71,80 @@ window.clearChat = function(channel) {
 }
 
 /**
+ * Sets a channel as the default for the community.
+ * @param {string} channelId - The ID of the channel to set as default.
+ * @param {HTMLElement} buttonElement - The button that was clicked.
+ */
+window.setDefaultChannel = function(channelId, buttonElement) {
+    if (!buttonElement || buttonElement.disabled) return;
+
+    const originalContent = buttonElement.innerHTML;
+    buttonElement.disabled = true;
+    buttonElement.innerHTML = `<div class="button-spinner" style="width:16px;height:16px;border-width:2px;"></div><span>Setting...</span>`;
+
+    fetch(`/set-default-channel/${channelId}`, { method: 'POST' })
+        .then(res => {
+            if (!res.ok) return res.json().then(err => Promise.reject(err));
+            return res.json();
+        })
+        .then(data => {
+            if (window.showNotification) {
+                window.showNotification(data.message, 'success');
+            }
+            setTimeout(() => window.location.reload(), 1500);
+        })
+        .catch(err => {
+            if (window.showNotification) {
+                window.showNotification(err.message || 'An error occurred.', 'error');
+            }
+            buttonElement.disabled = false;
+            buttonElement.innerHTML = originalContent;
+        });
+}
+
+
+/**
+ * Toggles a channel's privacy between personal and shared for community admins.
+ * @param {string} channelId - The ID of the channel to toggle.
+ * @param {boolean} isShared - The new desired state (true for shared, false for personal).
+ */
+window.toggleChannelPrivacy = function(channelId, isShared) {
+    const toggle = document.getElementById('shareToggle');
+    if(toggle) toggle.disabled = true;
+
+    fetch(`/api/toggle_channel_privacy/${channelId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(err => Promise.reject(err));
+        }
+        return res.json();
+    })
+    .then(data => {
+        if (window.showNotification) {
+            window.showNotification(data.message, 'success');
+        }
+        // A page reload is the simplest way to reflect the change everywhere (sidebar, etc.)
+        setTimeout(() => window.location.reload(), 1500);
+    })
+    .catch(err => {
+        if (window.showNotification) {
+            window.showNotification(err.message || 'An error occurred.', 'error');
+        }
+        // Revert the toggle state on failure
+        if(toggle) toggle.checked = !isShared;
+    })
+    .finally(() => {
+        // Keep it disabled on success because the page will reload
+        if(toggle && !document.querySelector('.notification.success')) {
+            toggle.disabled = false;
+        }
+    });
+}
+
+/**
  * Toggles the visibility of the sources list associated with a button.
  * @param {HTMLElement} btn - The button element that was clicked.
  */
@@ -182,6 +256,8 @@ function restoreButton(button, originalHTML, finalStateClass) {
 document.addEventListener('DOMContentLoaded', function() {
 
     // --- A. Element Selectors & Page Data ---
+    const toggleRightSidebarBtn = document.getElementById('toggle-right-sidebar-btn');
+    const desktopChatLayout = document.querySelector('.desktop-chat-layout');
     const questionForm = document.getElementById('questionForm');
     const questionText = document.getElementById('questionText');
     const submitBtn = document.getElementById('submitBtn');
@@ -489,7 +565,27 @@ document.addEventListener('DOMContentLoaded', function() {
         hamburgerBtnMobile.addEventListener('click', () => mainHamburger.click());
     }
 
-    // --- E. Initial Page Setup ---
+    // --- E. Sidebar Toggle Logic ---
+    if (toggleRightSidebarBtn && desktopChatLayout) {
+        const sidebarStateKey = 'rightSidebarCollapsed';
+
+        const applySidebarState = () => {
+            if (localStorage.getItem(sidebarStateKey) === 'true') {
+                desktopChatLayout.classList.add('right-sidebar-collapsed');
+            } else {
+                desktopChatLayout.classList.remove('right-sidebar-collapsed');
+            }
+        };
+
+        applySidebarState(); // Apply state on initial load
+
+        toggleRightSidebarBtn.addEventListener('click', () => {
+            const isCollapsed = desktopChatLayout.classList.toggle('right-sidebar-collapsed');
+            localStorage.setItem(sidebarStateKey, isCollapsed);
+        });
+    }
+
+    // --- F. Initial Page Setup ---
     const init = () => {
         if (questionText) {
             questionText.focus();

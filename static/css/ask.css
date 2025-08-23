@@ -612,3 +612,107 @@
     color: var(--accent-primary);
     box-shadow: var(--shadow-sm);
 }
+
+/* --- Admin Channel Settings --- */
+.admin-channel-settings {
+    border-top: 1px solid var(--neutral-200);
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-xl);
+}
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+}
+.setting-label label {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+.setting-label p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+.theme-switch.large-switch {
+    width: 52px;
+    height: 28px;
+    flex-shrink: 0;
+}
+.theme-switch.large-switch .slider:before {
+    height: 22px;
+    width: 22px;
+}
+.theme-switch.large-switch input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+/* --- Right Sidebar Toggle --- */
+.sidebar-toggle-btn {
+    display: none; /* Hidden by default, shown in media query */
+    position: absolute;
+    top: 50%;
+    right: 0px;
+    transform: translateY(-50%) translateX(50%);
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    background-color: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-toggle-btn:hover {
+    background-color: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+.sidebar-toggle-btn svg {
+    transition: transform 0.3s ease;
+}
+
+@media (min-width: 769px) {
+    .sidebar-toggle-btn {
+        display: flex;
+    }
+
+    .desktop-chat-layout {
+        position: relative;
+        transition: grid-template-columns 0.3s ease;
+    }
+
+    .chat-sidebar-right {
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        will-change: transform, opacity;
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .desktop-chat-layout.right-sidebar-collapsed {
+        grid-template-columns: 1fr 0;
+    }
+
+    .desktop-chat-layout.right-sidebar-collapsed .chat-sidebar-right {
+        transform: translateX(100%);
+        opacity: 0;
+        padding: 0;
+        border-left: none;
+    }
+
+    .desktop-chat-layout.right-sidebar-collapsed .sidebar-toggle-btn {
+        right: -16px; /* Adjust position when collapsed */
+    }
+
+    .desktop-chat-layout.right-sidebar-collapsed .sidebar-toggle-btn svg {
+        transform: rotate(180deg);
+    }
+}

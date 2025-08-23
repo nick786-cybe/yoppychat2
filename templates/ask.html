@@ -62,6 +62,7 @@
 >
     <div class="chat-column">
         <div class="chat-wrapper">
+
             <div id="conversation-history" class="chat-container" role="log" aria-live="polite">
                     {% if not history %}
                     <div class="example-questions-container">
@@ -195,6 +196,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     <span>Clear Chat</span>
                 </a>
+
                     {% if not session.get('active_community_id') %}
                     <a href="{{ url_for('integrations', channel_id=current_channel.id) }}" class="action-btn">
                         </a>
@@ -202,6 +204,22 @@
                         </a>
                     {% endif %}
             </div>
+
+            {# --- NEW: Channel Privacy Toggle for Admins --- #}
+            {% if user_status.is_active_community_owner and current_channel.community_id == user_status.active_community_id and current_channel.user_id == user.id %}
+            <div class="admin-channel-settings">
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <label for="shareToggle">Share with Community</label>
+                        <p>When shared, all community members can see and chat with this channel.</p>
+                    </div>
+                    <label class="theme-switch large-switch">
+                        <input type="checkbox" id="shareToggle" {% if current_channel.is_shared %}checked{% endif %} onchange="toggleChannelPrivacy('{{ current_channel.id }}', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            {% endif %}
 
             {% if current_channel.topics %}
             <div class="profile-topics">
