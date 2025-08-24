@@ -639,16 +639,24 @@ def channel():
                 existing = db_utils.find_channel_by_url(cleaned_url)
 
                 if existing:
-                    db_utils.link_user_to_channel(user_id, existing['id'])
+                    # If the channel exists, we try to link it.
+                    link_response = db_utils.link_user_to_channel(user_id, existing['id'])
+                    # Only increment if a new link was actually created.
+                    if link_response:
+                        db_utils.increment_channels_processed(user_id)
+
                     if redis_client: redis_client.delete(f"user_channels:{user_id}")
                     return jsonify({'status': 'success', 'message': 'Channel added to your list.'})
                 else:
-                    # Personal channels are NOT shared and not linked to a community
+                    # If the channel is new, create it first.
                     new_channel = db_utils.create_channel(cleaned_url, user_id, is_shared=False, community_id=None)
                     if not new_channel:
                         return jsonify({'status': 'error', 'message': 'Could not create channel record.'}), 500
 
+                    # Then link it. This will always be a new link.
                     db_utils.link_user_to_channel(user_id, new_channel['id'])
+                    db_utils.increment_channels_processed(user_id)
+
                     task = process_channel_task.schedule(args=(new_channel['id'],), delay=1)
                     if redis_client: redis_client.delete(f"user_channels:{user_id}")
                     return jsonify({'status': 'processing', 'task_id': task.id})

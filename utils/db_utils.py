@@ -131,6 +131,18 @@ def increment_personal_query_usage(user_id: str):
     except Exception as e:
         log.error(f"Error incrementing personal query usage for user {user_id}: {e}")
 
+def increment_channels_processed(user_id: str):
+    """
+    Increments the channels_processed counter for a specific user.
+    This should be called only when a new, unique channel is added to a user's list.
+    """
+    try:
+        params = {'p_user_id': user_id}
+        # Assumes a corresponding RPC function exists in the database.
+        supabase.rpc('increment_channels_processed', params).execute()
+    except Exception as e:
+        log.error(f"Error incrementing channels processed for user {user_id}: {e}")
+
 def create_initial_usage_stats(user_id: str):
     """Creates the initial usage_stats row for a new user."""
     try:
