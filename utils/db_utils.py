@@ -127,7 +127,7 @@ def increment_personal_query_usage(user_id: str):
     """
     try:
         params = {'p_user_id': user_id}
-        supabase.rpc('increment_query_usage', params).execute()
+        supabase.rpc('increment_query_counts', params).execute()
     except Exception as e:
         log.error(f"Error incrementing personal query usage for user {user_id}: {e}")
 
