@@ -99,10 +99,14 @@
                         <div class="menu-plan-display">
                             <div class="plan-badge">{{ user_status.plan_name | title }} Plan</div>
                             <p class="plan-queries">
-                                {% if user_status.limits.max_queries_per_month|string() == 'inf' %}
-                                    You have <strong>Unlimited</strong> queries.
-                                {% else %}
-                                    You have <strong>{{ (user_status.limits.max_queries_per_month - user_status.usage.queries_this_month) | int }}</strong> queries remaining.
+                                {% if user_status.has_personal_plan or not user_status.is_whop_user %}
+                                    {% if user_status.limits.max_queries_per_month|string() == 'inf' %}
+                                        You have <strong>Unlimited</strong> personal queries.
+                                    {% else %}
+                                        You have <strong>{{ (user_status.limits.max_queries_per_month - user_status.usage.queries_this_month) | int }}</strong> personal queries remaining.
+                                    {% endif %}
+                                {% elif community_status %}
+                                    The community has <strong>{{ (community_status.limits.query_limit - community_status.usage.queries_used) | int }}</strong> shared queries remaining.
                                 {% endif %}
                             </p>
                         </div>

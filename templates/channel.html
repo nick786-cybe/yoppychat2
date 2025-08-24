@@ -20,6 +20,18 @@
         <p class="hero-subtitle">YoppyChat studies every video you’ve ever published—your insights, stories, and signature style—then lets viewers chat with an AI version of you whenever inspiration strikes.
 </p>
 
+        <div class="plan-usage-display">
+            {% if user_status %}
+                {% if user_status.plan_id == 'admin_testing' %}
+                    <p>You are on the Admin Testing plan. You can add <strong>1</strong> channel.</p>
+                {% elif user_status.plan_id == 'community_member' %}
+                    <p>As a community member, you can chat with shared channels. To add your own personal channels, please upgrade to a member plan.</p>
+                {% else %}
+                    <p>Your current plan: <strong>{{ user_status.plan_name }}</strong>. You can add up to <strong>{{ user_status.limits.max_channels }}</strong> personal channels.</p>
+                {% endif %}
+            {% endif %}
+        </div>
+
         <form id="channelForm" class="channel-form" onsubmit="return false;">
             <div class="form-group">
                 <div class="input-container">

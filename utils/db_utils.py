@@ -71,15 +71,13 @@ def create_channel(channel_url: str, user_id: str, is_shared: bool = False, comm
 
 def add_community(community_data: dict):
     """Adds a new community with default plan values."""
-    from .subscription_utils import COMMUNITY_PLANS
     try:
         # Set default values for a new community based on the 'basic_community' plan
-        plan_details = COMMUNITY_PLANS.get('basic_community')
         defaults = {
             'plan_id': 'basic_community',
-            'query_limit': plan_details['queries_per_month'],
+            'query_limit': 0, # Will be set by Whop webhook based on member count
             'queries_used': 0,
-            'shared_channel_limit': plan_details['shared_channels_allowed'],
+            'shared_channel_limit': 1,
             'trial_queries_used': 0
         }
         # Merge provided data with defaults, letting provided data take precedence

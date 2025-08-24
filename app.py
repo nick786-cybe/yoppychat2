@@ -364,8 +364,7 @@ def whop_community_plan_update_webhook():
         supabase_admin = get_supabase_admin_client()
         community_update = {
             'plan_id': new_plan_id,
-            'shared_channel_limit': new_plan_details['shared_channels_allowed'],
-            'query_limit': new_plan_details['queries_per_month']
+            'shared_channel_limit': new_plan_details['shared_channels_allowed']
         }
         update_res = supabase_admin.table('communities').update(community_update).eq('whop_community_id', whop_community_id).execute()
 
@@ -604,21 +603,30 @@ def channel():
                 return jsonify({'status': 'error', 'message': 'Could not verify user status.'}), 500
 
             # --- Dynamically apply the correct limit logic ---
-            max_channels = user_status['limits'].get('max_channels', 0)
-
-            # For admins, the limit is on total channels they create
             if user_status.get('is_active_community_owner'):
-                current_channels = db_utils.count_channels_for_user(user_id)
-            else:
-                # For regular users, the limit is on personal channels processed
-                current_channels = user_status['usage'].get('channels_processed', 0)
+                # Admin logic: check against unified channel limit
+                community_status = get_community_status(active_community_id)
+                if not community_status:
+                    return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
 
-            if max_channels != float('inf') and current_channels >= max_channels:
-                message = f"You have reached the maximum of {int(max_channels)} channels for your plan."
-                if user_status.get('is_whop_user'):
-                    return jsonify({'status': 'limit_reached', 'message': message, 'action': 'show_upgrade_popup'}), 403
-                else:
-                    return jsonify({'status': 'limit_reached', 'message': message}), 403
+                current_total_channels = db_utils.count_channels_for_user(user_id)
+                max_total_channels = community_status['limits'].get('shared_channel_limit', 0)
+
+                if current_total_channels >= max_total_channels:
+                    return jsonify({
+                        'status': 'limit_reached',
+                        'message': f"As a community admin, your total channel limit is {max_total_channels}. You have reached this limit."
+                    }), 403
+            else:
+                # Regular user logic: check against personal channel limit
+                max_channels = user_status['limits'].get('max_channels', 0)
+                current_channels = user_status['usage'].get('channels_processed', 0)
+                if max_channels != float('inf') and current_channels >= max_channels:
+                    message = f"You have reached the maximum of {int(max_channels)} personal channels for your plan."
+                    if user_status.get('is_whop_user'):
+                        return jsonify({'status': 'limit_reached', 'message': message, 'action': 'show_upgrade_popup'}), 403
+                    else:
+                        return jsonify({'status': 'limit_reached', 'message': message}), 403
 
             # If limits are not reached, proceed with adding the channel
             def guarded_personal_channel_add():
@@ -1087,6 +1095,30 @@ def toggle_channel_privacy(channel_id):
         logging.error(f"Error toggling privacy for channel {channel_id}: {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'An internal server error occurred.'}), 500
 
+
+if os.environ.get("FLASK_ENV") == "development":
+    @app.route('/dev/login')
+    def dev_login():
+        user_id = 'a_test_user_id'
+        session['user'] = {
+            'id': user_id,
+            'user_metadata': {
+                'full_name': 'Test User',
+                'avatar_url': 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png'
+            },
+            'email': 'test@example.com'
+        }
+        session['access_token'] = 'test_access_token'
+        session['refresh_token'] = 'test_refresh_token'
+        session['expires_at'] = time.time() + 3600
+        # Ensure profile and usage stats exist for the test user
+        db_utils.create_or_update_profile({
+            'id': user_id,
+            'email': 'test@example.com',
+            'full_name': 'Test User'
+        })
+        db_utils.create_initial_usage_stats(user_id)
+        return 'Logged in as test user'
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

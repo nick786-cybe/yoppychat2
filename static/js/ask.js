@@ -406,8 +406,16 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(err => {
                 console.error('Fetch error:', err);
-                const message = err.message || 'Failed to send question. Please try again.';
-                answerContent.innerHTML = `<p class="error-message">${escapeHtml(message)}</p>`;
+                if (err && err.status === 'limit_reached') {
+                    if (window.showUpgradePopup) {
+                        window.showUpgradePopup(err.message);
+                    } else {
+                        answerContent.innerHTML = `<p class="error-message">${escapeHtml(err.message)}</p>`;
+                    }
+                } else {
+                    const message = err.message || 'Failed to send question. Please try again.';
+                    answerContent.innerHTML = `<p class="error-message">${escapeHtml(message)}</p>`;
+                }
                 typingContainer.classList.remove('active');
             });
     };
