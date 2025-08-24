@@ -192,7 +192,17 @@ def limit_enforcer(check_type: str):
 
             # --- Query Limit Logic ---
             if check_type == 'query':
-                # Hybrid logic: check personal plan first, then fall back to community.
+                # --- Admin Trial Logic (MUST be checked first) ---
+                if user_status.get('is_active_community_owner'):
+                    community_status = get_community_status(active_community_id)
+                    if community_status:
+                        trial_limit = community_status['limits'].get('owner_trial_limit', 0)
+                        trial_used = community_status['usage'].get('trial_queries_used', 0)
+                        if trial_used < trial_limit:
+                            # Admin is in trial period, bypass other checks and allow the query.
+                            return f(*args, **kwargs)
+
+                # --- Standard Limit Logic ---
                 if user_status.get('has_personal_plan'):
                     # Upgraded user: check against their personal query limit
                     max_queries = user_status['limits'].get('max_queries_per_month', 0)
