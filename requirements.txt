@@ -1,0 +1,47 @@
+torch
+
+# -- Core Framework & Server --
+Flask
+gunicorn
+waitress
+Flask-Compress
+# -- Background Tasks & Caching --
+huey[redis]
+redis
+
+# -- YouTube & Data Scraping --
+yt-dlp
+youtube-transcript-api
+beautifulsoup4
+requests
+
+# -- AI & Machine Learning --
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+faiss-cpu
+numpy
+openai
+google-generativeai
+langchain
+sentence-transformers
+
+# -- Google API (for YouTube Data) --
+google-api-python-client
+google-auth-httplib2
+isodate
+
+# -- Supabase & Database --
+supabase
+psycopg2-binary
+
+# -- Utilities --
+python-dotenv
+Markdown
+MarkupSafe
+PyJWT
+
+
+grpcio
+isodate
+httpx[http2]
+tiktoken

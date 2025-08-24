@@ -71,13 +71,15 @@ def create_channel(channel_url: str, user_id: str, is_shared: bool = False, comm
 
 def add_community(community_data: dict):
     """Adds a new community with default plan values."""
+    from .subscription_utils import COMMUNITY_PLANS
     try:
         # Set default values for a new community based on the 'basic_community' plan
+        plan_details = COMMUNITY_PLANS.get('basic_community')
         defaults = {
             'plan_id': 'basic_community',
-            'query_limit': 0, # Will be set by Whop webhook based on member count
+            'query_limit': plan_details['queries_per_month'],
             'queries_used': 0,
-            'shared_channel_limit': 1,
+            'shared_channel_limit': plan_details['shared_channels_allowed'],
             'trial_queries_used': 0
         }
         # Merge provided data with defaults, letting provided data take precedence
@@ -120,6 +122,16 @@ def increment_community_query_usage(community_id: str, is_trial: bool):
         supabase.rpc('increment_query_usage', params).execute()
     except Exception as e:
         log.error(f"Error incrementing query usage for community {community_id}: {e}")
+
+def increment_personal_query_usage(user_id: str):
+    """
+    Increments the query counter for a specific user.
+    """
+    try:
+        params = {'p_user_id': user_id}
+        supabase.rpc('increment_personal_query_usage', params).execute()
+    except Exception as e:
+        log.error(f"Error incrementing personal query usage for user {user_id}: {e}")
 
 def create_initial_usage_stats(user_id: str):
     """Creates the initial usage_stats row for a new user."""

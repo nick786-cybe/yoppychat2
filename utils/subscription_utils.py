@@ -23,24 +23,29 @@ COMMUNITY_PLANS = {
     'basic_community': {
         'name': 'Basic Community',
         'shared_channels_allowed': 1,
-        'queries_per_month': 50
+        'queries_per_month': 200
     },
     'pro_community': {
         'name': 'Pro Community',
         'shared_channels_allowed': 2,
-        'queries_per_month': 100
+        'queries_per_month': 500
     },
     'rich_community': {
         'name': 'Rich Community',
         'shared_channels_allowed': 5,
-        'queries_per_month': 250
+        'queries_per_month': 1500
     }
 }
 
 PLANS = {
-    'free': { 'name': 'Free', 'max_channels': 0, 'max_queries_per_month': 50 },
+    # Plan for non-whop users
+    'free': { 'name': 'Free', 'max_channels': 2, 'max_queries_per_month': 50 },
     'creator': { 'name': 'Creator', 'max_channels': 10, 'max_queries_per_month': 2500 },
     'pro': { 'name': 'Pro', 'max_channels': float('inf'), 'max_queries_per_month': 10000 },
+
+    # Plan for whop users
+    'admin_testing': { 'name': 'Admin Testing', 'max_channels': 1, 'max_queries_per_month': 10 },
+    'community_member': { 'name': 'Community Member', 'max_channels': 0, 'max_queries_per_month': 50 },
     'whop_basic_member': { 'name': 'Basic Member', 'max_channels': 2, 'max_queries_per_month': 50 },
     'whop_pro_member': { 'name': 'Pro Member', 'max_channels': 5, 'max_queries_per_month': 100 },
     'whop_rich_member': { 'name': 'Rich Member', 'max_channels': 10, 'max_queries_per_month': 300 }
@@ -115,46 +120,27 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
     is_whop_user = bool(profile.get('whop_user_id'))
     personal_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
 
-    raw_plan_id = None
-    plan_details = {}
+    raw_plan_id = 'free'
 
-    # 1. Determine the user's plan ID based on their status and subscriptions.
-    if personal_plan_id:
-        # User has a personal plan. Check if it's valid for their user type.
+    if is_whop_user:
+        raw_plan_id = 'community_member'
+        # Community owners get the testing plan by default
+        if active_community_id:
+            community_res = supabase_admin.table('communities').select('owner_user_id').eq('id', active_community_id).single().execute()
+            if community_res.data and str(community_res.data['owner_user_id']) == str(user_id):
+                raw_plan_id = 'admin_testing'
+
+    if personal_plan_id and personal_plan_id in PLANS:
         is_valid_plan = False
         if is_whop_user and personal_plan_id.startswith('whop_'):
             is_valid_plan = True
         elif not is_whop_user and personal_plan_id in ['creator', 'pro', 'free']:
             is_valid_plan = True
 
-        if is_valid_plan and personal_plan_id in PLANS:
+        if is_valid_plan:
             raw_plan_id = personal_plan_id
-        else:
-            # Plan ID in DB is invalid or doesn't match user type. Fall through to defaults.
-            personal_plan_id = None # Nullify to trigger default logic.
 
-    if not raw_plan_id:
-        # User has no valid personal plan, determine default.
-        if is_whop_user and active_community_id:
-            raw_plan_id = 'community_base' # Virtual plan for default community members
-        elif is_whop_user:
-            raw_plan_id = 'whop_base' # Virtual plan for Whop users outside a community
-        else:
-            raw_plan_id = 'free'
-
-    # 2. Get the plan's limits and name.
-    if raw_plan_id == 'community_base':
-        community_status = get_community_status(active_community_id)
-        plan_details = {
-            'name': community_status.get('plan_name', 'Community Member') if community_status else 'Community Member',
-            'max_channels': 0,
-            'max_queries_per_month': community_status['limits'].get('queries_per_month', 50) if community_status else 50
-        }
-    elif raw_plan_id == 'whop_base':
-        plan_details = { 'name': 'Basic Member', 'max_channels': 0, 'max_queries_per_month': 50 }
-    else:
-        # It's a real plan from the PLANS dict.
-        plan_details = PLANS.get(raw_plan_id, PLANS['free'])
+    plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
     # 3. Construct the final status object. No more stacking or overwrites needed.
     status = {
@@ -205,12 +191,38 @@ def limit_enforcer(check_type: str):
 
             # --- Query Limit Logic ---
             if check_type == 'query':
-                max_queries = user_status['limits'].get('max_queries_per_month', 0)
-                if max_queries != float('inf') and user_status['usage']['queries_this_month'] >= max_queries:
-                    return jsonify({
-                        'status': 'limit_reached',
-                        'message': f"You've reached your monthly query limit of {int(max_queries)}."
-                    }), 403
+                # Hybrid logic: check personal plan first, then fall back to community.
+                if user_status.get('has_personal_plan'):
+                    # Upgraded user: check against their personal query limit
+                    max_queries = user_status['limits'].get('max_queries_per_month', 0)
+                    queries_used = user_status['usage'].get('queries_this_month', 0)
+                    if max_queries != float('inf') and queries_used >= max_queries:
+                        return jsonify({
+                            'status': 'limit_reached',
+                            'message': f"You've reached your monthly query limit of {int(max_queries)}."
+                        }), 403
+                elif active_community_id:
+                    # Default community member: check against the community's shared pool
+                    community_status = get_community_status(active_community_id)
+                    if not community_status:
+                        return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
+
+                    max_queries = community_status['limits'].get('query_limit', 0)
+                    queries_used = community_status['usage'].get('queries_used', 0)
+                    if max_queries != float('inf') and queries_used >= max_queries:
+                        return jsonify({
+                            'status': 'limit_reached',
+                            'message': "The community's shared query limit has been reached."
+                        }), 403
+                else:
+                    # Non-Whop user: check against their personal query limit
+                    max_queries = user_status['limits'].get('max_queries_per_month', 0)
+                    queries_used = user_status['usage'].get('queries_this_month', 0)
+                    if max_queries != float('inf') and queries_used >= max_queries:
+                        return jsonify({
+                            'status': 'limit_reached',
+                            'message': f"You've reached your monthly query limit of {int(max_queries)}."
+                        }), 403
 
             # --- Personal Channel Limit Logic ---
             elif check_type == 'channel':

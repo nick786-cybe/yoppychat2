@@ -148,6 +148,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION public.increment_personal_query_usage(p_user_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  IF p_user_id IS NOT NULL THEN
+    UPDATE public.usage_stats
+    SET queries_this_month = queries_this_month + 1
+    WHERE user_id = p_user_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION match_embeddings (
   query_embedding vector(1536),
   match_threshold float,

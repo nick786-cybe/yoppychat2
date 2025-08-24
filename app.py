@@ -364,7 +364,8 @@ def whop_community_plan_update_webhook():
         supabase_admin = get_supabase_admin_client()
         community_update = {
             'plan_id': new_plan_id,
-            'shared_channel_limit': new_plan_details['shared_channels_allowed']
+            'shared_channel_limit': new_plan_details['shared_channels_allowed'],
+            'query_limit': new_plan_details['queries_per_month']
         }
         update_res = supabase_admin.table('communities').update(community_update).eq('whop_community_id', whop_community_id).execute()
 
@@ -603,30 +604,21 @@ def channel():
                 return jsonify({'status': 'error', 'message': 'Could not verify user status.'}), 500
 
             # --- Dynamically apply the correct limit logic ---
+            max_channels = user_status['limits'].get('max_channels', 0)
+
+            # For admins, the limit is on total channels they create
             if user_status.get('is_active_community_owner'):
-                # Admin logic: check against unified channel limit
-                community_status = get_community_status(active_community_id)
-                if not community_status:
-                    return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
-
-                current_total_channels = db_utils.count_channels_for_user(user_id)
-                max_total_channels = community_status['limits'].get('shared_channel_limit', 0)
-
-                if current_total_channels >= max_total_channels:
-                    return jsonify({
-                        'status': 'limit_reached',
-                        'message': f"As a community admin, your total channel limit is {max_total_channels}. You have reached this limit."
-                    }), 403
+                current_channels = db_utils.count_channels_for_user(user_id)
             else:
-                # Regular user logic: check against personal channel limit
-                max_channels = user_status['limits'].get('max_channels', 0)
+                # For regular users, the limit is on personal channels processed
                 current_channels = user_status['usage'].get('channels_processed', 0)
-                if max_channels != float('inf') and current_channels >= max_channels:
-                    message = f"You have reached the maximum of {int(max_channels)} personal channels for your plan."
-                    if user_status.get('is_whop_user'):
-                        return jsonify({'status': 'limit_reached', 'message': message, 'action': 'show_upgrade_popup'}), 403
-                    else:
-                        return jsonify({'status': 'limit_reached', 'message': message}), 403
+
+            if max_channels != float('inf') and current_channels >= max_channels:
+                message = f"You have reached the maximum of {int(max_channels)} channels for your plan."
+                if user_status.get('is_whop_user'):
+                    return jsonify({'status': 'limit_reached', 'message': message, 'action': 'show_upgrade_popup'}), 403
+                else:
+                    return jsonify({'status': 'limit_reached', 'message': message}), 403
 
             # If limits are not reached, proceed with adding the channel
             def guarded_personal_channel_add():
@@ -783,9 +775,14 @@ def stream_answer():
     # After a successful query, we need to increment the usage counter.
     # This wrapper will be called by the streaming generator upon completion.
     def on_complete_callback():
-        # We only increment usage for Whop users (who have an active community).
-        if active_community_id:
+        user_status = get_user_status(user_id, active_community_id)
+        if user_status.get('has_personal_plan'):
+            db_utils.increment_personal_query_usage(user_id)
+        elif active_community_id:
             db_utils.increment_community_query_usage(active_community_id, is_trial=is_owner_in_trial)
+            db_utils.increment_personal_query_usage(user_id) # Also track personal usage from pool
+        else:
+            db_utils.increment_personal_query_usage(user_id)
 
     MAX_CHAT_MESSAGES = 20
     current_channel_name_for_history = channel_name or 'general'
