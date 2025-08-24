@@ -446,6 +446,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (parsed.sources) {
                                 foundSources = parsed.sources;
                             }
+                            if (parsed.updated_query_string) {
+                                const planQueriesElement = document.querySelector('.plan-queries');
+                                if (planQueriesElement) {
+                                    planQueriesElement.innerHTML = parsed.updated_query_string;
+                                }
+                            }
                         } catch (e) {
                             console.error('Error parsing stream data:', e);
                             throw e;

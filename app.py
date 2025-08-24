@@ -783,14 +783,48 @@ def stream_answer():
     # After a successful query, we need to increment the usage counter.
     # This wrapper will be called by the streaming generator upon completion.
     def on_complete_callback():
+        # Increment usage counters first
         user_status = get_user_status(user_id, active_community_id)
         if user_status.get('has_personal_plan'):
             db_utils.increment_personal_query_usage(user_id)
         elif active_community_id:
             db_utils.increment_community_query_usage(active_community_id, is_trial=is_owner_in_trial)
-            db_utils.increment_personal_query_usage(user_id) # Also track personal usage from pool
+            db_utils.increment_personal_query_usage(user_id)
         else:
             db_utils.increment_personal_query_usage(user_id)
+
+        # Invalidate all relevant caches to ensure the next fetch is fresh
+        if hasattr(db_utils, 'get_profile') and hasattr(db_utils.get_profile, 'cache_clear'):
+            db_utils.get_profile.cache_clear()
+
+        if redis_client:
+            user_cache_key = f"user_status:{user_id}:community:{active_community_id or 'none'}"
+            redis_client.delete(user_cache_key)
+            if active_community_id:
+                community_cache_key = f"community_status:{active_community_id}"
+                redis_client.delete(community_cache_key)
+
+        # Fetch the fresh data after cache invalidation
+        fresh_user_status = get_user_status(user_id, active_community_id)
+        fresh_community_status = get_community_status(active_community_id) if active_community_id else None
+
+        # Reconstruct the query count string based on the fresh data
+        query_string = ""
+        if fresh_user_status and (fresh_user_status.get('has_personal_plan') or not fresh_user_status.get('is_whop_user')):
+            max_queries = fresh_user_status['limits'].get('max_queries_per_month', 0)
+            if max_queries == float('inf'):
+                query_string = "You have <strong>Unlimited</strong> personal queries."
+            else:
+                queries_used = fresh_user_status['usage'].get('queries_this_month', 0)
+                remaining = int(max_queries - queries_used)
+                query_string = f"You have <strong>{remaining}</strong> personal queries remaining."
+        elif fresh_community_status:
+            max_queries = fresh_community_status['limits'].get('query_limit', 0)
+            queries_used = fresh_community_status['usage'].get('queries_used', 0)
+            remaining = int(max_queries - queries_used)
+            query_string = f"The community has <strong>{remaining}</strong> shared queries remaining."
+
+        return query_string
 
     MAX_CHAT_MESSAGES = 20
     current_channel_name_for_history = channel_name or 'general'

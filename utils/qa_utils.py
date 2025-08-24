@@ -616,9 +616,11 @@ def answer_question_stream(question_for_prompt: str, question_for_search: str, c
         else:
             print(f"[TIME_LOG] Full LLM stream generation took {llm_stream_end_time - llm_stream_start_time:.4f} seconds.")
 
-        # If the stream completes without error, call the callback
+        # If the stream completes without error, call the callback and yield the result
         if on_complete:
-            on_complete()
+            query_string = on_complete()
+            if query_string:
+                yield f"data: {json.dumps({'updated_query_string': query_string})}\n\n"
 
     except Exception as e:
         logging.error(f"Streaming error in answer_question_stream: {e}", exc_info=True)
