@@ -127,7 +127,7 @@ def increment_personal_query_usage(user_id: str):
     """
     try:
         params = {'p_user_id': user_id}
-        supabase.rpc('increment_personal_query_usage', params).execute()
+        supabase.rpc('increment_query_usage', params).execute()
     except Exception as e:
         log.error(f"Error incrementing personal query usage for user {user_id}: {e}")
 
@@ -138,8 +138,8 @@ def increment_channels_processed(user_id: str):
     """
     try:
         params = {'p_user_id': user_id}
-        # Assumes a corresponding RPC function exists in the database.
-        supabase.rpc('increment_channels_processed', params).execute()
+        # Use the existing RPC function suggested by the database error hint.
+        supabase.rpc('increment_channel_count', params).execute()
     except Exception as e:
         log.error(f"Error incrementing channels processed for user {user_id}: {e}")
 
