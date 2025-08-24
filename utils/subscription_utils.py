@@ -246,43 +246,62 @@ def limit_enforcer(check_type: str):
         return decorated_function
     return decorator
 
-def community_channel_limit_enforcer(f):
+def community_channel_limit_enforcer(_func=None, *, check_on_increase_only=False):
     """
-    Decorator for community owners adding shared channels.
+    Decorator for community owners adding or modifying shared channels.
+    Can be configured to only run the check if the action would increase the count.
     """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user' not in session:
+                return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
 
-        user_id = session['user']['id']
-        active_community_id = session.get('active_community_id')
+            user_id = session['user']['id']
+            active_community_id = session.get('active_community_id')
 
-        if not active_community_id:
-            return jsonify({'status': 'error', 'message': 'No active community context found.'}), 400
+            if not active_community_id:
+                return jsonify({'status': 'error', 'message': 'No active community context found.'}), 400
 
-        user_status = get_user_status(user_id, active_community_id)
+            # For toggling, we need the channel's current state, which we get from the route arguments
+            if check_on_increase_only:
+                channel_id = kwargs.get('channel_id')
+                if not channel_id:
+                    return jsonify({'status': 'error', 'message': 'Channel ID is required for this check.'}), 500
 
-        if not user_status.get('is_active_community_owner'):
-            return jsonify({'status': 'error', 'message': 'Only community owners can perform this action.'}), 403
+                supabase_admin = get_supabase_admin_client()
+                channel_res = supabase_admin.table('channels').select('is_shared').eq('id', channel_id).single().execute()
+                if not channel_res.data:
+                    return jsonify({'status': 'error', 'message': 'Channel not found.'}), 404
 
-        community_status = get_community_status(active_community_id)
-        if not community_status:
-            return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
+                # If the channel is already shared, making it private is fine. No limit check needed.
+                if channel_res.data['is_shared']:
+                    return f(*args, **kwargs)
 
-        from . import db_utils
-        current_shared_channels = db_utils.count_shared_channels(active_community_id)
-        max_shared_channels = community_status['limits'].get('shared_channel_limit', 0)
+            user_status = get_user_status(user_id, active_community_id)
+            if not user_status.get('is_active_community_owner'):
+                return jsonify({'status': 'error', 'message': 'Only community owners can perform this action.'}), 403
 
-        if current_shared_channels >= max_shared_channels:
-            return jsonify({
-                'status': 'limit_reached',
-                'message': f"You have reached the maximum of {max_shared_channels} shared channels for your community's plan."
-            }), 403
+            community_status = get_community_status(active_community_id)
+            if not community_status:
+                return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
 
-        return f(*args, **kwargs)
+            from . import db_utils
+            current_shared_channels = db_utils.count_shared_channels(active_community_id)
+            max_shared_channels = community_status['limits'].get('shared_channel_limit', 0)
 
-    return decorated_function
+            if current_shared_channels >= max_shared_channels:
+                return jsonify({
+                    'status': 'limit_reached',
+                    'message': f"You have reached the maximum of {max_shared_channels} shared channels for your community's plan."
+                }), 403
+
+            return f(*args, **kwargs)
+        return decorated_function
+
+    if _func:
+        return decorator(_func)
+    return decorator
 
 def admin_channel_limit_enforcer(f):
     """

@@ -666,7 +666,7 @@ def channel():
 
 @app.route('/add_shared_channel', methods=['POST'])
 @login_required
-@admin_channel_limit_enforcer
+@community_channel_limit_enforcer
 def add_shared_channel():
     user_id = session['user']['id']
     community_id = session.get('active_community_id')
@@ -1045,8 +1045,11 @@ def privacy():
 def terms():
     return render_template('terms.html', saved_channels=get_user_channels())
 
+from utils.subscription_utils import community_channel_limit_enforcer
+
 @app.route('/api/toggle_channel_privacy/<int:channel_id>', methods=['POST'])
 @login_required
+@community_channel_limit_enforcer(check_on_increase_only=True)
 def toggle_channel_privacy(channel_id):
     """
     Allows a community owner to toggle a channel between personal and shared.
