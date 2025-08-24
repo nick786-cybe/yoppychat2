@@ -649,7 +649,18 @@ def channel():
                     return jsonify({'status': 'success', 'message': 'Channel added to your list.'})
                 else:
                     # If the channel is new, create it first.
-                    new_channel = db_utils.create_channel(cleaned_url, user_id, is_shared=False, community_id=None)
+                    # A channel added by a community owner should be linked to their community
+                    # so they have the option to share it later.
+                    community_id_for_channel = None
+                    if user_status.get('is_active_community_owner'):
+                        community_id_for_channel = active_community_id
+
+                    new_channel = db_utils.create_channel(
+                        cleaned_url,
+                        user_id,
+                        is_shared=False, # A new channel always starts as personal
+                        community_id=community_id_for_channel
+                    )
                     if not new_channel:
                         return jsonify({'status': 'error', 'message': 'Could not create channel record.'}), 500
 
