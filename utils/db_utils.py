@@ -18,6 +18,15 @@ def get_profile(user_id: str):
         log.error(f"Error getting profile for user {user_id}: {e}")
         return None
 
+def get_usage_stats(user_id: str):
+    """Fetches a user's usage statistics from the usage_stats table."""
+    try:
+        response = supabase.table('usage_stats').select('*').eq('user_id', user_id).maybe_single().execute()
+        return response.data if response and response.data else {}
+    except Exception as e:
+        log.error(f"Error getting usage stats for user {user_id}: {e}")
+        return {} # Return an empty dict on error to prevent crashes downstream
+
 def link_user_to_community(user_id: str, community_id: str):
     """Creates a link in the user_communities join table."""
     try:

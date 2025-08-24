@@ -6,7 +6,7 @@ from flask import session, jsonify
 import redis
 import json
 from .supabase_client import get_supabase_admin_client
-from .db_utils import get_profile
+from .db_utils import get_profile, get_usage_stats
 from . import whop_api
 
 # --- Redis Caching Setup ---
@@ -143,6 +143,7 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
     plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
     # 3. Construct the final status object. No more stacking or overwrites needed.
+    usage_stats = get_usage_stats(user_id)
     status = {
         'user_id': user_id,
         'plan_id': raw_plan_id,
@@ -154,8 +155,8 @@ def get_user_status(user_id: str, active_community_id: str = None) -> dict:
         'community_role': None,
         'limits': plan_details.copy(),
         'usage': {
-            'queries_this_month': get_profile(user_id).get('queries_this_month', 0),
-            'channels_processed': get_profile(user_id).get('channels_processed', 0)
+            'queries_this_month': usage_stats.get('queries_this_month', 0),
+            'channels_processed': usage_stats.get('channels_processed', 0)
         }
     }
 
