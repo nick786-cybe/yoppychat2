@@ -492,7 +492,8 @@ def whop_app_entry():
         print(f"[DEBUG] Found X-Forwarded-Host: {forwarded_host}")
         supabase_admin = get_supabase_admin_client()
         community_res = supabase_admin.table('communities').select('whop_community_id').eq('forwarded_host', forwarded_host).maybe_single().execute()
-        if community_res.data:
+        print(f"[DEBUG] community_res from db: {community_res}")
+        if community_res and community_res.data:
             whop_community_id = community_res.data['whop_community_id']
             print(f"[DEBUG] Found whop_community_id: {whop_community_id} for forwarded_host: {forwarded_host}")
             whop_company = whop_api.get_company_by_id(whop_community_id, user_token)
