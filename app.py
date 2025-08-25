@@ -481,7 +481,7 @@ def whop_app_entry():
         return redirect(url_for('home'))
 
     whop_user = whop_api.get_user_from_token(user_token)
-    whop_company = whop_api.get_current_company()
+    whop_company = whop_api.get_current_company(user_token)
 
     if not whop_user or not whop_company:
         flash("Failed to verify user or company with Whop.", "error")
@@ -507,7 +507,7 @@ def whop_app_entry():
             print(f"[SUCCESS] Created new user with App ID: {auth_user.id}")
 
         app_user_id = str(auth_user.id)
-        
+
         # --- THIS IS THE FIX ---
         # Pass the company data to the role-checking function
         user_role = whop_api.get_user_role_in_company(whop_user_id, whop_company)
@@ -1181,10 +1181,10 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             return redirect(url_for('home'))
-        
+
         # NOTE: Replace 'your-admin-user-id' with your actual Supabase user ID.
         admin_user_id = '2f092c41-e0c5-4533-98a2-9e5da027d0ed'
-        
+
         if str(session['user']['id']) != admin_user_id:
             flash('You do not have permission to access this page.', 'error')
             return redirect(url_for('channel'))
@@ -1195,20 +1195,20 @@ def admin_required(f):
 @admin_required
 def admin_dashboard():
     supabase_admin = get_supabase_admin_client()
-    
+
     communities_res = supabase_admin.table('communities').select('*, owner:owner_user_id(full_name, email)').execute()
     communities = communities_res.data if communities_res.data else []
-    
+
     non_whop_users_res = supabase_admin.table('profiles').select('*, usage:usage_stats(*)').is_('whop_user_id', None).execute()
     non_whop_users = non_whop_users_res.data if non_whop_users_res.data else []
 
-    saved_channels = get_user_channels() 
+    saved_channels = get_user_channels()
 
     return render_template(
-        'admin.html', 
-        communities=communities, 
-        non_whop_users=non_whop_users, 
-        all_plans=PLANS, 
+        'admin.html',
+        communities=communities,
+        non_whop_users=non_whop_users,
+        all_plans=PLANS,
         COMMUNITY_PLANS=COMMUNITY_PLANS,
         saved_channels=saved_channels
     )
@@ -1272,13 +1272,13 @@ def api_admin_set_current_plan():
         return jsonify({'status': 'error', 'message': 'Missing required fields.'}), 400
 
     supabase_admin = get_supabase_admin_client()
-    
+
     try:
         if plan_type == 'community':
             plan_details = COMMUNITY_PLANS.get(plan_id)
             if not plan_details:
                 return jsonify({'status': 'error', 'message': 'Invalid community plan ID.'}), 400
-            
+
             update_data = {
                 'plan_id': plan_id,
                 'shared_channel_limit': plan_details['shared_channels_allowed'],
@@ -1289,7 +1289,7 @@ def api_admin_set_current_plan():
         elif plan_type == 'user':
             if plan_id not in PLANS:
                 return jsonify({'status': 'error', 'message': 'Invalid user plan ID.'}), 400
-            
+
             supabase_admin.table('profiles').update({'direct_subscription_plan': plan_id}).eq('id', target_id).execute()
 
         return jsonify({'status': 'success', 'message': 'Plan updated successfully.'})
@@ -1308,7 +1308,7 @@ def api_admin_remove_plan():
         return jsonify({'status': 'error', 'message': 'Missing required fields.'}), 400
 
     supabase_admin = get_supabase_admin_client()
-    
+
     try:
         if target_type == 'community':
             # Revert to the default 'basic_community' plan
