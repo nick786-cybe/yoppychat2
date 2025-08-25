@@ -137,3 +137,20 @@ Transcript Excerpts:
 ---
 
 Channel Summary:"""
+
+QUERY_REWRITE_PROMPT = """You are an expert at rephrasing questions. Your task is to take a conversation history and a follow-up question, and rewrite the follow-up question into a single, self-contained query that can be understood without the conversation history.
+
+**Guidelines:**
+- The rewritten query should be optimized for a vector database search.
+- It should be specific and include all necessary context from the history.
+- If the follow-up question is already self-contained, simply return it as is.
+- Do not answer the question, only rewrite it.
+
+**Conversation History:**
+---
+{chat_history}
+---
+
+**Follow-up Question:** "{question}"
+
+**Rewritten Query:**"""

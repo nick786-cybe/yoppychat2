@@ -7,7 +7,7 @@ import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from tasks import huey, process_channel_task, sync_channel_task, process_telegram_update_task,delete_channel_task
-from utils.qa_utils import answer_question_stream,search_and_rerank_chunks
+from utils.qa_utils import answer_question_stream,search_and_rerank_chunks, rewrite_query_for_search
 from utils.supabase_client import get_supabase_client, get_supabase_admin_client,refresh_supabase_session
 from utils.history_utils import get_chat_history, save_chat_history
 from utils.telegram_utils import set_webhook, get_bot_token_and_url
@@ -279,7 +279,8 @@ def stream_answer():
             f"{question}"
         )
 
-    search_query = question
+    search_query = rewrite_query_for_search(question, history)
+    logging.info(f"Original question: '{question}' | Rewritten search query: '{search_query}'")
     # if history:
     #     last_q = history[-1]['question']
     #     last_a = history[-1]['answer']

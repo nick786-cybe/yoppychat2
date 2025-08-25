@@ -632,6 +632,59 @@ def answer_question_stream(question_for_prompt: str, question_for_search: str, c
     total_request_end_time = time.perf_counter()
     print(f"[TIME_LOG] Total answer_question_stream request (end-to-end) took {total_request_end_time - total_request_start_time:.4f} seconds.")
 
+def rewrite_query_for_search(question: str, chat_history: List[Dict[str, str]]) -> str:
+    """
+    Uses an LLM to rewrite a follow-up question into a self-contained query
+    based on the conversation history.
+    """
+    if not chat_history:
+        return question
+
+    try:
+        history_str = ""
+        for turn in chat_history[-5:]: # Use last 5 turns
+            history_str += f"Human: {turn.get('question', '')}\\nAI: {turn.get('answer', '')}\\n\\n"
+
+        prompt = prompts.QUERY_REWRITE_PROMPT.format(
+            chat_history=history_str.strip(),
+            question=question
+        )
+
+        # We need a fast, non-streaming model for this.
+        # Let's use the same provider logic as other internal functions.
+        provider = os.environ.get('REWRITE_LLM_PROVIDER', os.environ.get('LLM_PROVIDER', 'groq'))
+        model = os.environ.get('REWRITE_MODEL_NAME', 'llama3-8b-8192') # Default to a fast model
+        api_key = _get_api_key(provider)
+
+        if provider == 'groq':
+            base_url = 'https://api.groq.com/openai/v1'
+        else:
+            base_url = os.environ.get('OPENAI_API_BASE_URL', None)
+
+        if not all([provider, model, api_key]):
+            logging.warning("Query rewrite LLM not fully configured. Skipping rewrite.")
+            return question
+
+        rewritten_query = _get_openai_answer_non_stream(
+            prompt,
+            model,
+            api_key,
+            base_url=base_url,
+            temperature=0.0, # Be deterministic
+            max_tokens=100
+        )
+
+        if rewritten_query and rewritten_query.strip() != "":
+            logging.info(f"Original query: '{question}' -> Rewritten query: '{rewritten_query.strip()}'")
+            return rewritten_query.strip()
+        else:
+            logging.warning("Query rewrite returned empty result. Using original question.")
+            return question
+
+    except Exception as e:
+        logging.error(f"Error during query rewrite: {e}. Falling back to original question.", exc_info=True)
+        return question
+
 def _get_openai_answer_non_stream(prompt: str, model: str, api_key: str, **kwargs):
     """Gets a single, non-streamed response from an OpenAI-compatible API."""
     try:
