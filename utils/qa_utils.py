@@ -9,12 +9,14 @@ from functools import lru_cache
 from typing import Iterator, List, Optional, Dict, Any
 from dotenv import load_dotenv
 from sentence_transformers import CrossEncoder
+from rank_bm25 import BM25Okapi
 from datetime import datetime
 from . import prompts
 from .supabase_client import get_supabase_client, get_supabase_admin_client
 import re
 import threading
-from . import prompts 
+from . import prompts
+from .intent_classifier import classify_intent
 from utils.supabase_client import get_supabase_admin_client
 import tiktoken
 
@@ -186,54 +188,17 @@ EMBEDDING_PROVIDER_MAP = {
 
 def get_routed_context(question: str, channel_data: Optional[dict], user_id: str, access_token: str):
     """
-    Intelligently builds a context list based on user intent.
-    For "latest video" queries, it fetches transcript chunks and generates a live summary
-    to be used as context for the main LLM.
+    Intelligently routes the user's question to the appropriate retrieval strategy.
+    It first checks for simple, high-precision cases (e.g., identity) and then uses
+    an ML classifier for more nuanced routing.
     """
     question_lower = question.lower()
-    
-    # --- Intent 1: Direct request for the latest video ---
-    if any(phrase in question_lower for phrase in ['latest video', 'newest video', 'most recent']):
-        print("Query routed to: get_latest_video_summary")
-        if channel_data and channel_data.get('videos'):
-            videos = channel_data['videos']
-            if videos:
-                try:
-                    latest_video = sorted(videos, key=lambda v: v.get('upload_date'), reverse=True)[0]
-                    title = latest_video.get('title', 'My Latest Video')
-                    video_id = latest_video.get('video_id')
-                    summary = ""
+    video_ids = {v['video_id'] for v in channel_data.get('videos', [])} if channel_data else None
 
-                    # Fetch the first 3 chunks of the transcript from the database
-                    admin_supabase = get_supabase_admin_client()
-                    response = admin_supabase.table('embeddings').select('metadata').eq('video_id', video_id).order('metadata->>chunk_index', desc=False).limit(3).execute()
-                    
-                    if getattr(response, 'data', None):
-                        # Combine the text and generate a summary
-                        first_chunks_text = " ".join([row['metadata']['chunk_text'] for row in response.data])
-                        summary = _get_transcript_summary(first_chunks_text)
-                    else:
-                        # Fallback to the stored description only if no transcript chunks are found
-                        summary = latest_video.get('description') or "I can't seem to find the details for this video right now, but I hope you check it out!"
-                    
-                    # Create the synthetic context chunk using our high-quality summary
-                    context_chunk = {
-                        'chunk_text': f"My latest video is titled '{title}'. Here is a quick summary of what it is about: {summary}",
-                        'video_title': title,
-                        'video_url': latest_video.get('url'),
-                        'video_id': video_id,
-                        'upload_date': latest_video.get('upload_date'),
-                    }
-                    print(f"Crafted summary context for main LLM: {context_chunk['chunk_text'][:100]}...")
-                    return [context_chunk]
-                except Exception as e:
-                    logging.warning(f"Could not determine latest video or generate summary: {e}. Falling back to semantic search.")
-
-    # --- Intent 2: Identity questions (no changes needed here) ---
+    # --- Priority 1: High-precision keyword matching for identity ---
     identity_keywords = ['who are you', 'what is your name', 'introduce yourself']
     if any(keyword in question_lower for keyword in identity_keywords):
-        # ... (this part remains the same)
-        print("Intent Detected: Identity. Prepending intro context.")
+        print("Intent Detected (Keyword): Identity. Prepending intro context.")
         identity_context = []
         if channel_data:
             creator_name = channel_data.get('channel_name', 'the creator')
@@ -244,13 +209,24 @@ def get_routed_context(question: str, channel_data: Optional[dict], user_id: str
                 'video_url': channel_data.get('channel_url', '#'),
                 'video_id': 'intro_chunk'
             })
-        semantic_chunks = search_and_rerank_chunks(question, user_id, access_token, channel_data.get('videos'))
-        return identity_context + semantic_chunks
+        # We still search for other relevant chunks to provide a comprehensive answer
+        additional_chunks = search_and_rerank_chunks(question, user_id, access_token, video_ids)
+        return identity_context + additional_chunks
 
-    # --- Default Intent: Semantic Search (no changes needed here) ---
-    print("Query routed to: semantic_search")
-    video_ids = {v['video_id'] for v in channel_data.get('videos', [])} if channel_data else None
-    return search_and_rerank_chunks(question, user_id, access_token, video_ids)
+    # --- Priority 2: ML-based Intent Classification for nuanced routing ---
+    intent = classify_intent(question)
+    print(f"Query intent classified as: {intent}")
+
+    if intent == "Latest Updates":
+        print("Routing to: Hybrid Search with strong temporal bias.")
+        # A bias of 2.0 makes the recency score twice as important.
+        return search_and_rerank_chunks(question, user_id, access_token, video_ids, temporal_bias=2.0)
+
+    # For all other intents, use the standard hybrid search for now.
+    # This provides a clean structure to add more specific logic later (e.g., personality bias).
+    else:
+        print(f"Routing to: Hybrid Search (standard for intent: {intent}).")
+        return search_and_rerank_chunks(question, user_id, access_token, video_ids, temporal_bias=1.0)
 
 # --- Provider-Specific LLM STREAMING FUNCTIONS ---
 def _get_openai_answer_stream(prompt: str, model: str, api_key: str, **kwargs):
@@ -338,6 +314,34 @@ LLM_STREAM_PROVIDER_MAP = {
     'ollama': _get_ollama_answer_stream
 }
 
+@lru_cache(maxsize=10)
+def get_channel_corpus(user_id: str, video_ids_tuple: tuple, access_token: str):
+    """
+    Fetches all text chunks for a given set of video IDs to build a corpus for BM25.
+    Uses LRU cache to avoid re-fetching for the same channel.
+    The access_token is part of the cache key to ensure data isolation.
+    """
+    if not video_ids_tuple:
+        return []
+
+    video_ids = list(video_ids_tuple)
+    logging.info(f"Corpus cache miss for user {user_id}. Fetching corpus for {len(video_ids)} videos.")
+
+    supabase = get_supabase_client(access_token=access_token) if access_token else get_supabase_admin_client()
+
+    # Fetch all chunks for these video_ids. A production system might need pagination here.
+    # For now, we'll set a generous limit.
+    response = supabase.table('embeddings').select('metadata').in_('video_id', video_ids).limit(10000).execute()
+
+    if not getattr(response, 'data', None):
+        logging.warning(f"Could not fetch corpus for videos: {video_ids}")
+        return []
+
+    corpus_docs = [item['metadata'] for item in response.data]
+
+    logging.info(f"Successfully fetched {len(corpus_docs)} documents for the corpus for user {user_id}.")
+    return corpus_docs
+
 def rerank_with_cross_encoder(query: str, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Re-ranks chunks using a Cross-Encoder model, lazy-loaded on first call.
@@ -372,104 +376,161 @@ def rerank_with_cross_encoder(query: str, chunks: List[Dict[str, Any]]) -> List[
     print(f"[TIME_LOG] Re-ranking with Cross-Encoder took {end_time - start_time:.4f} seconds.")
     return sorted_chunks
 
-def search_and_rerank_chunks(query: str, user_id: str, access_token: str, video_ids: Optional[set] = None):
+def search_and_rerank_chunks(query: str, user_id: str, access_token: str, video_ids: Optional[set] = None, temporal_bias: float = 1.0):
     total_start_time = time.perf_counter()
     
+    # --- 1. Hybrid Search: BM25 (Keyword) + Semantic ---
+
+    # 1a. Get Corpus for BM25 (cached)
+    corpus_docs = []
+    if video_ids:
+        video_ids_tuple = tuple(sorted(list(video_ids)))
+        corpus_docs = get_channel_corpus(user_id, video_ids_tuple, access_token)
+
+    # 1b. Perform BM25 Search
+    bm25_results = []
+    if corpus_docs:
+        bm25_start_time = time.perf_counter()
+        corpus_texts = [doc.get('chunk_text', '') for doc in corpus_docs]
+        tokenized_corpus = [doc.split(" ") for doc in corpus_texts]
+
+        if tokenized_corpus:
+            bm25 = BM25Okapi(tokenized_corpus)
+            tokenized_query = query.split(" ")
+            bm25_scores = bm25.get_scores(tokenized_query)
+
+            for doc, score in zip(corpus_docs, bm25_scores):
+                if score > 0.1:  # Threshold to reduce noise
+                    result_item = doc.copy()
+                    result_item['bm25_score'] = score
+                    bm25_results.append(result_item)
+
+            bm25_results = sorted(bm25_results, key=lambda x: x['bm25_score'], reverse=True)[:25]
+            bm25_end_time = time.perf_counter()
+            print(f"[TIME_LOG] BM25 Search took {bm25_end_time - bm25_start_time:.4f}s, found {len(bm25_results)} candidates.")
+
+    # 1c. Perform Semantic Search
     def create_query_embedding(query_text: str):
         provider = os.environ.get('EMBED_PROVIDER', 'openai')
         model = os.environ.get('EMBED_MODEL')
-        if not model:
-            logging.error("EMBED_MODEL is not set in environment variables.")
-            return None
         api_key = _get_api_key(provider)
         ollama_url = os.environ.get('OLLAMA_URL')
         embedding_function = EMBEDDING_PROVIDER_MAP.get(provider)
-        if not embedding_function:
-            logging.error(f"Unsupported embedding provider: {provider}")
-            return None
-        embeddings = None
         if provider == 'ollama':
             embeddings = embedding_function([query_text], model, ollama_url=ollama_url)
         else:
-            if not api_key:
-                logging.error(f"API key for {provider} not found in environment variables.")
-                return None
             embeddings = embedding_function([query_text], model, api_key=api_key)
-        if not embeddings:
-            return None
-        return embeddings[0]  # may be None if provider failed for this item
+        return embeddings[0] if embeddings else None
 
+    semantic_results = []
     try:
-        embedding_start_time = time.perf_counter()
         query_embedding = create_query_embedding(query)
-        embedding_end_time = time.perf_counter()
-        print(f"[TIME_LOG] Query embedding creation took {embedding_end_time - embedding_start_time:.4f} seconds.")
-        if query_embedding is None:
-            logging.error("Failed to create query embedding.")
-            return []
+        if query_embedding is not None:
+            supabase = get_supabase_client(access_token=access_token) if access_token else get_supabase_admin_client()
+            match_params = {
+                'query_embedding': query_embedding.tolist(),
+                'match_threshold': float(os.environ.get('MATCH_THRESHOLD', 0.4)),
+                'match_count': int(os.environ.get('MATCH_COUNT', 50)),
+                'p_video_ids': list(video_ids) if video_ids else None
+            }
+            rpc_start_time = time.perf_counter()
+            response = supabase.rpc('match_embeddings', match_params).execute()
+            rpc_end_time = time.perf_counter()
+            print(f"[TIME_LOG] Supabase 'match_embeddings' RPC call took {rpc_end_time - rpc_start_time:.4f} seconds.")
 
-        supabase = get_supabase_client(access_token=access_token) if access_token else get_supabase_admin_client()
-        match_params = {
-            'query_embedding': query_embedding.tolist(),
-            'match_threshold': float(os.environ.get('MATCH_THRESHOLD', 0.4)),
-            'match_count': int(os.environ.get('MATCH_COUNT', 50)),
-            'p_video_ids': list(video_ids) if video_ids else None
-        }
-        
-        print(f"Calling 'match_embeddings' with params:")
-        print(f"  - user_id: {user_id}")
-        print(f"  - video_ids: {'All' if not video_ids else list(video_ids)}")
-        print(f"  - match_threshold: {match_params['match_threshold']}")
-        
-        rpc_start_time = time.perf_counter()
-        response = supabase.rpc('match_embeddings', match_params).execute()
-        rpc_end_time = time.perf_counter()
-        print(f"[TIME_LOG] Supabase 'match_embeddings' RPC call took {rpc_end_time - rpc_start_time:.4f} seconds.")
-        
-        if not getattr(response, 'data', None):
-            logging.warning("Supabase RPC call returned no data.")
-            return []
-        print(f"SUCCESS: Received {len(response.data)} results from Supabase.")
-
-        initial_results = []
-        for row in response.data:
-            chunk_data = row.get('metadata') or {}
-            chunk_data['similarity_score'] = row.get('similarity')
-            initial_results.append(chunk_data)
-
-        CHUNKS_TO_RERANK = int(os.environ.get('CHUNKS_TO_RERANK', 15))
-        print(f"Passing the top {CHUNKS_TO_RERANK} results to the re-ranker.")
-        if os.environ.get('ENABLE_RERANKING', 'true').lower() == 'true':
-            reranked_results = rerank_with_cross_encoder(query, initial_results[:CHUNKS_TO_RERANK])
+            if getattr(response, 'data', None):
+                for row in response.data:
+                    chunk_data = row.get('metadata') or {}
+                    chunk_data['similarity_score'] = row.get('similarity')
+                    semantic_results.append(chunk_data)
+                print(f"SUCCESS: Received {len(semantic_results)} semantic results from Supabase.")
         else:
-            print("Re-ranking is disabled via environment variable. Skipping.")
-            reranked_results = initial_results
-        
-        filtering_start_time = time.perf_counter()
-        top_k = int(os.environ.get('TOP_K', 5))
-        final_results = []
-        video_counts = {}
-        for chunk in reranked_results:
-            video_id = chunk.get('video_id')
-            if video_counts.get(video_id, 0) < 2:
-                final_results.append(chunk)
-                video_counts[video_id] = video_counts.get(video_id, 0) + 1
-            if len(final_results) >= top_k:
-                break
-        filtering_end_time = time.perf_counter()
-        print(f"[TIME_LOG] Final result diversification/filtering took {filtering_end_time - filtering_start_time:.4f} seconds.")
-        print(f"Selected {len(final_results)} diverse, highly relevant chunks for the context.")
-        
-        total_end_time = time.perf_counter()
-        print(f"[TIME_LOG] Total search_and_rerank_chunks took {total_end_time - total_start_time:.4f} seconds.")
-        return final_results
-    
+            logging.error("Failed to create query embedding.")
+
     except Exception as e:
-        if 'JWT expired' in str(e):
-            logging.warning("Caught expired JWT error. Notifying frontend.")
-            return "JWT_EXPIRED"
-        logging.error(f"Error in search_and_rerank_chunks: {e}", exc_info=True)
-        return []
+        if 'JWT expired' in str(e): return "JWT_EXPIRED"
+        logging.error(f"Error in semantic search part of hybrid search: {e}", exc_info=True)
+
+    # --- 2. Combine, Score, and Prepare for Reranking ---
+
+    # 2a. Combine Semantic and BM25 results, ensuring uniqueness
+    combined_chunks = {}
+    for chunk in semantic_results:
+        chunk_id = (chunk.get('video_id'), chunk.get('chunk_index'))
+        combined_chunks[chunk_id] = chunk
+    for chunk in bm25_results:
+        chunk_id = (chunk.get('video_id'), chunk.get('chunk_index'))
+        if chunk_id in combined_chunks:
+            combined_chunks[chunk_id]['bm25_score'] = chunk.get('bm25_score', 0.0)
+        else:
+            combined_chunks[chunk_id] = chunk
+
+    # 2b. Apply Temporal Scoring (Recency Boost)
+    w_semantic = 0.5
+    w_bm25 = 0.3
+    w_recency = 0.2
+
+    # Normalize BM25 scores for stable hybrid scoring
+    max_bm25_score = max([c.get('bm25_score', 0.0) for c in combined_chunks.values()]) if bm25_results else 1.0
+
+    scored_chunks = []
+    for chunk in combined_chunks.values():
+        # Temporal decay score
+        recency_score = 0.0
+        upload_date_str = chunk.get('upload_date')
+        if upload_date_str:
+            try:
+                upload_date = datetime.fromisoformat(upload_date_str.replace('Z', '+00:00'))
+                days_since_upload = (datetime.now(datetime.now().astimezone().tzinfo) - upload_date).days
+                half_life = 180  # Score halves every 180 days
+                decay_rate = -0.693 / half_life
+                recency_score = np.exp(decay_rate * max(0, days_since_upload))
+            except (ValueError, TypeError):
+                recency_score = 0.0
+        
+        # Normalized BM25
+        normalized_bm25 = chunk.get('bm25_score', 0.0) / max_bm25_score if max_bm25_score > 0 else 0.0
+        
+        # Hybrid score for pre-ranking
+        chunk['hybrid_score'] = (
+            w_semantic * chunk.get('similarity_score', 0.0) +
+            w_bm25 * normalized_bm25 +
+            w_recency * recency_score * temporal_bias
+        )
+        scored_chunks.append(chunk)
+
+    # Sort by hybrid score to select the best candidates for the expensive cross-encoder
+    scored_chunks.sort(key=lambda x: x.get('hybrid_score', 0.0), reverse=True)
+    
+    # --- 3. Rerank with Cross-Encoder ---
+    CHUNKS_TO_RERANK = int(os.environ.get('CHUNKS_TO_RERANK', 25))
+    chunks_for_reranker = scored_chunks[:CHUNKS_TO_RERANK]
+    print(f"Passing the top {len(chunks_for_reranker)} hybrid results to the re-ranker.")
+
+    if os.environ.get('ENABLE_RERANKING', 'true').lower() == 'true':
+        reranked_results = rerank_with_cross_encoder(query, chunks_for_reranker)
+    else:
+        print("Re-ranking is disabled via environment variable. Skipping.")
+        reranked_results = chunks_for_reranker
+        # If not reranking, sort by hybrid score
+        reranked_results.sort(key=lambda x: x.get('hybrid_score', 0.0), reverse=True)
+
+    # --- 4. Diversify and Finalize Results ---
+    top_k = int(os.environ.get('TOP_K', 5))
+    final_results = []
+    video_counts = {}
+    for chunk in reranked_results:
+        video_id = chunk.get('video_id')
+        if video_counts.get(video_id, 0) < 2:
+            final_results.append(chunk)
+            video_counts[video_id] = video_counts.get(video_id, 0) + 1
+        if len(final_results) >= top_k:
+            break
+
+    print(f"Selected {len(final_results)} diverse, highly relevant chunks for the context.")
+    total_end_time = time.perf_counter()
+    print(f"[TIME_LOG] Total search_and_rerank_chunks took {total_end_time - total_start_time:.4f} seconds.")
+    return final_results
 
 def count_tokens(text: str, model: str = "gpt-4") -> int:
     """
@@ -484,6 +545,56 @@ def count_tokens(text: str, model: str = "gpt-4") -> int:
         encoding = tiktoken.get_encoding("cl100k_base")
     
     return len(encoding.encode(text))
+
+def _expand_query_with_history(question: str, history: str) -> str:
+    """
+    Uses a fast LLM to rewrite a conversational query into a standalone query
+    that incorporates context from the chat history.
+    """
+    if not history.strip():
+        return question
+
+    print("Expanding query with chat history...")
+
+    QUERY_EXPANSION_PROMPT = """Given the following conversation history and a follow-up question, rewrite the follow-up question to be a standalone question that can be understood without the chat history.
+Your goal is to make the question self-contained, so it can be used for a search query.
+Do not answer the question, simply rewrite it.
+If the follow-up question is already standalone, just return it as is.
+
+CONVERSATION HISTORY:
+---
+{chat_history}
+---
+
+FOLLOW-UP QUESTION: "{question}"
+
+STANDALONE QUESTION:"""
+
+    try:
+        provider = "groq"
+        model = "llama3-8b-8192"
+        api_key = _get_api_key(provider)
+
+        if not api_key:
+            logging.error("No API key found for query expansion (Groq). Falling back to original question.")
+            return question
+
+        prompt = QUERY_EXPANSION_PROMPT.format(chat_history=history, question=question)
+
+        base_url = 'https://api.groq.com/openai/v1'
+
+        expanded_query = _get_openai_answer_non_stream(prompt, model, api_key, base_url=base_url, temperature=0.0)
+
+        if expanded_query and expanded_query.strip():
+            print(f"Expanded query: '{expanded_query.strip()}'")
+            return expanded_query.strip().strip('"')
+        else:
+            print("Query expansion returned empty result. Falling back to original question.")
+            return question
+
+    except Exception as e:
+        logging.error(f"Error in _expand_query_with_history: {e}. Falling back to original question.")
+        return question
 
 def answer_question_stream(question_for_prompt: str, question_for_search: str, channel_data: dict = None, video_ids: set = None, user_id: str = None, access_token: str = None, tone: str = 'Casual') -> Iterator[str]:
     """
@@ -527,8 +638,13 @@ def answer_question_stream(question_for_prompt: str, question_for_search: str, c
         yield "data: {\"error\": \"User not identified. Please log in.\"}\n\n"
         return
 
-    # --- Use the dedicated `question_for_search` to find relevant documents ---
-    relevant_chunks = get_routed_context(question_for_search, channel_data, user_id, access_token)
+    # --- Expand the search query with conversation history for better context ---
+    if chat_history_for_prompt:
+        search_query = _expand_query_with_history(question_for_search, chat_history_for_prompt)
+    else:
+        search_query = question_for_search
+
+    relevant_chunks = get_routed_context(search_query, channel_data, user_id, access_token)
 
     if relevant_chunks == "JWT_EXPIRED":
         yield 'data: {"error": "JWT_EXPIRED"}\n\n'
