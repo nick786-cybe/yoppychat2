@@ -480,8 +480,9 @@ def whop_app_entry():
         flash("Authentication failed. Please access the app through your Whop community.", "error")
         return redirect(url_for('home'))
 
+    company_id = request.args.get('company_id') or request.args.get('business_id')
     whop_user = whop_api.get_user_from_token(user_token)
-    whop_company = whop_api.get_current_company(user_token)
+    whop_company = whop_api.get_current_company(user_token, company_id)
 
     if not whop_user or not whop_company:
         flash("Failed to verify user or company with Whop.", "error")
@@ -510,7 +511,7 @@ def whop_app_entry():
 
         # --- THIS IS THE FIX ---
         # Pass the company data to the role-checking function
-        user_role = whop_api.get_user_role_in_company(whop_user_id, whop_company)
+        user_role = whop_api.get_user_role_in_company(whop_user_id, whop_company, user_token)
         # --- END OF FIX ---
 
         print(f"[INFO] User Role Determined: {user_role}")
