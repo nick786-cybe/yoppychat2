@@ -229,25 +229,9 @@ def get_routed_context(question: str, channel_data: Optional[dict], user_id: str
                 except Exception as e:
                     logging.warning(f"Could not determine latest video or generate summary: {e}. Falling back to semantic search.")
 
-    # --- Intent 2: Identity questions (no changes needed here) ---
-    identity_keywords = ['who are you', 'what is your name', 'introduce yourself']
-    if any(keyword in question_lower for keyword in identity_keywords):
-        # ... (this part remains the same)
-        print("Intent Detected: Identity. Prepending intro context.")
-        identity_context = []
-        if channel_data:
-            creator_name = channel_data.get('channel_name', 'the creator')
-            summary = channel_data.get('summary', 'a content creator who makes videos on YouTube.')
-            identity_context.append({
-                'video_title': 'Introduction',
-                'chunk_text': f"My name is {creator_name}. I run this channel where {summary}",
-                'video_url': channel_data.get('channel_url', '#'),
-                'video_id': 'intro_chunk'
-            })
-        semantic_chunks = search_and_rerank_chunks(question, user_id, access_token, channel_data.get('videos'))
-        return identity_context + semantic_chunks
-
-    # --- Default Intent: Semantic Search (no changes needed here) ---
+    # --- Default Intent: Semantic Search ---
+    # The special intent routing for identity questions is removed.
+    # The bio will be added to the context in the main answer_question_stream function.
     print("Query routed to: semantic_search")
     video_ids = {v['video_id'] for v in channel_data.get('videos', [])} if channel_data else None
     return search_and_rerank_chunks(question, user_id, access_token, video_ids)
@@ -551,8 +535,15 @@ def answer_question_stream(question_for_prompt: str, question_for_search: str, c
     formatted_sources = sorted(list(sources_dict.values()), key=lambda s: s['title'])
     yield f"data: {json.dumps({'sources': formatted_sources})}\n\n"
 
-    context_parts = [f"From video '{chunk.get('video_title', 'Unknown')}' (uploaded on {chunk.get('upload_date', 'N/A')}): {chunk.get('chunk_text', '')}" for chunk in relevant_chunks]
-    context = '\n\n'.join(context_parts)
+    context_parts = []
+    if channel_data and channel_data.get('official_bio'):
+        bio_context = f"Official Channel Bio: {channel_data['official_bio']}"
+        context_parts.append(bio_context)
+
+    video_context_parts = [f"From video '{chunk.get('video_title', 'Unknown')}' (uploaded on {chunk.get('upload_date', 'N/A')}): {chunk.get('chunk_text', '')}" for chunk in relevant_chunks]
+    context_parts.extend(video_context_parts)
+
+    context = '\\n\\n---\\n\\n'.join(context_parts)
     
     if channel_data:
         creator_name = channel_data.get('creator_name', channel_data.get('channel_name', 'the creator'))

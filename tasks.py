@@ -7,8 +7,8 @@ from postgrest.exceptions import APIError
 from huey import SqliteHuey, RedisHuey
 from huey.exceptions import TaskException
 from utils.youtube_utils import (
-    get_transcripts_from_channel, # <-- Use the robust function for new channels
-    get_transcripts_from_urls,    # <-- Use the targeted function for syncing
+    extract_channel_videos,
+    get_video_transcripts,
     youtube_api
 )
 from utils.embed_utils import create_and_store_embeddings
@@ -78,13 +78,21 @@ def process_channel_task(channel_id, task=None):
         
         update_task_progress(task_id, 'processing', 10, 'Scanning for long-form videos...')
         # --- THIS IS THE CORRECTED LOGIC ---
-        transcripts, thumbnail, subs = get_transcripts_from_channel(
-            youtube_api, 
-            channel_url, 
-            target_video_count=250 # Target this many long-form videos
+        video_urls, thumbnail, subs, description = extract_channel_videos(
+            youtube_api,
+            channel_url,
+            max_videos=250
+        )
+        if not video_urls:
+            raise ValueError("Could not find any videos for this channel.")
+
+        transcripts = get_video_transcripts(
+            youtube_api,
+            video_urls,
+            max_videos=250
         )
         if not transcripts:
-            raise ValueError("Could not find any long-form videos with transcripts.")
+            raise ValueError("Could not find any videos with transcripts.")
         # --- END OF CORRECTION ---
 
         update_task_progress(task_id, 'processing', 75, 'Building AI knowledge base...')
@@ -110,6 +118,7 @@ def process_channel_task(channel_id, task=None):
             'subscriber_count': subs,
             'topics': topics,
             'summary': summary,
+            'official_bio': description,
             'status': 'ready'
         }).eq('id', channel_id).execute()
 

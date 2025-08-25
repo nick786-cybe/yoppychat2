@@ -248,6 +248,7 @@ def extract_channel_videos(youtube_api_client, channel_url, max_videos=50):
         uploads_playlist_id = channel_item['contentDetails']['relatedPlaylists']['uploads']
         subscriber_count = int(channel_item['statistics'].get('subscriberCount', 0))
         channel_thumbnail = channel_item['snippet']['thumbnails']['high']['url']
+        channel_description = channel_item['snippet'].get('description', '')
 
         # Step 3: Fetch videos from the uploads playlist (this part remains the same)
         video_ids = []
@@ -268,11 +269,11 @@ def extract_channel_videos(youtube_api_client, channel_url, max_videos=50):
                 break
 
         video_urls = [f"https://www.youtube.com/watch?v={vid}" for vid in video_ids]
-        return video_urls, channel_thumbnail, subscriber_count
+        return video_urls, channel_thumbnail, subscriber_count, channel_description
 
     except Exception as e:
         log.error(f"Error extracting videos via API: {e}", exc_info=True)
-        return [], '', 0
+        return [], '', 0, ''
 
 def get_video_transcripts(youtube_api_client, video_urls: List[str], max_videos: int = 50, progress_callback=None) -> List[Dict]:
     """
@@ -377,9 +378,9 @@ if __name__ == '__main__':
         print(f"\n--- Extracting the first {test_max_videos} videos from: {channel_url_input} ---\n")
 
         # THIS IS THE FIX: Pass the 'youtube_api_client' as the first argument
-        video_urls, thumbnail_url, subscriber_count = extract_channel_videos(
-            youtube_api_client, 
-            channel_url_input, 
+        video_urls, thumbnail_url, subscriber_count, channel_description = extract_channel_videos(
+            youtube_api_client,
+            channel_url_input,
             max_videos=test_max_videos
         )
 
@@ -387,6 +388,7 @@ if __name__ == '__main__':
             print(f"--- SUCCESS: Found {len(video_urls)} videos ---")
             print(f"Channel Thumbnail URL: {thumbnail_url}")
             print(f"Subscriber Count: {subscriber_count}")
+            print(f"Channel Description: {channel_description[:100]}...")
             
             # --- Step 4: Fetch Transcripts ---
             print(f"\n--- Fetching transcripts for the {len(video_urls)} extracted videos... ---\n")
