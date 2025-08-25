@@ -1,22 +1,8 @@
 {# This macro renders the channel card used on the main dashboard page #}
-{% macro render_dashboard_processing_channel_card(channel_name) %}
-<div class="channel-card processing">
-    <div class="channel-card-link">
-        <div class="channel-card-avatar-placeholder processing-placeholder">
-            <div class="channel-card-spinner"></div>
-        </div>
-        <div class="channel-card-details">
-            <div class="channel-card-title">{{ channel_name }}</div>
-            <div class="channel-card-status">Processing...</div>
-        </div>
-    </div>
-</div>
-{% endmacro %}
-
 {% macro render_dashboard_channel_card(channel, channel_name) %}
+{# The main div now has a data-channel-id attribute #}
 <div class="channel-card" data-channel-id="{{ channel.id }}">
-    {# --- THIS LINE IS FIXED --- #}
-    <a href="{{ url_for('ask', channel_name=channel_name) }}" class="channel-card-link">
+    <a href="{{ url_for('ask_channel', channel_name=channel_name) }}" class="channel-card-link">
         {% if channel.channel_thumbnail %}
         <img src="{{ channel.channel_thumbnail }}" alt="{{ channel_name }}" class="channel-card-avatar">
         {% else %}
@@ -33,34 +19,20 @@
 {% endmacro %}
 
 
-{# This macro renders a channel item in a processing state for the sidebar #}
-{% macro render_sidebar_processing_channel_item(channel_name, task_id) %}
-<div class="channel-item-wrapper processing" data-task-id="{{ task_id }}">
-    <a href="#" class="channel-link" onclick="return false;">
-        <div class="channel-avatar-spinner"></div>
-        <span class="channel-name">{{ channel_name }}</span>
-    </a>
-    <div class="status-badge">Processing</div>
-</div>
-{% endmacro %}
-
 {# This macro renders the channel item used in the sidebar #}
-{% macro render_sidebar_channel_item(channel, channel_name, community_status=None) %}
-<div class="channel-item-wrapper {% if request.endpoint == 'ask' and request.view_args.get('channel_name') == channel_name %}active{% endif %}" data-channel-id="{{ channel.id }}">
-    <a href="{{ url_for('ask', channel_name=channel_name) }}" class="channel-link">
+{% macro render_sidebar_channel_item(channel, channel_name) %}
+{# The main div now has a data-channel-id attribute #}
+<div class="channel-item-wrapper {% if request.endpoint == 'ask_channel' and request.view_args.get('channel_name') == channel_name %}active{% endif %}" data-channel-id="{{ channel.id }}">
+    <a href="{{ url_for('ask_channel', channel_name=channel_name) }}" class="channel-link">
         {% if channel.channel_thumbnail %}<img src="{{ channel.channel_thumbnail }}" alt="{{ channel_name }}" class="channel-avatar">{% endif %}
         <span class="channel-name">{{ channel_name }}</span>
     </a>
-
-    {# --- NEW LOGIC: Hide delete button for default channel for non-admins --- #}
-    {% set is_default_channel = community_status and community_status.default_channel_id == channel.id %}
-    {% if not (is_default_channel and not user_status.is_active_community_owner) %}
     <button class="delete-btn" onclick="confirmDeleteChannel('{{ channel.id }}', '{{ channel_name }}', this)" aria-label="Delete {{ channel_name }}">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
     </button>
-    {% endif %}
 </div>
 {% endmacro %}
+
 
 {# Pricing card macro remains unchanged #}
 {% macro render_pricing_card(plan_details, current_plan=None, is_modal=False) %}

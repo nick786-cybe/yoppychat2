@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Connect Telegram{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        Connect Your Telegram Account
+    </h2>
+</div>
+
+<div class="form-card" style="text-align: center;">
+    {# Check if the user object exists. If not, they are logged out. #}
+    {% if user %}
+        {# This is your existing code for a logged-in user #}
+        <p class="page-description">
+            Link your account to chat with your AI assistant directly from Telegram.
+        </p>
+        {% if connection_status == 'not_connected' %}
+            <p>Click the button below to generate a unique connection code.</p>
+            <form method="POST" action="{{ url_for('connect_telegram') }}">
+                <button type="submit" class="btn btn-primary">Generate Connection Code</button>
+            </form>
+        {% elif connection_status == 'code_generated' %}
+            <h3>Your Connection Code</h3>
+            <p>Open Telegram, find your bot <strong>@{{ bot_username }}</strong>, and send it this exact message:</p>
+            <div class="code-block">
+                <code>/connect {{ connection_code }}</code>
+            </div>
+            <p class="text-muted">This code is valid for 10 minutes.</p>
+        {% elif connection_status == 'connected' %}
+            <h3>Successfully Connected!</h3>
+            <p>Your account is linked with Telegram user <strong>@{{ telegram_username }}</strong>.</p>
+            <form method="POST" action="{{ url_for('disconnect_telegram') }}">
+                 <button type="submit" class="btn btn-error">Disconnect Telegram</button>
+            </form>
+        {% endif %}
+
+    {% else %}
+        {# This is the new block for logged-out users #}
+        <p class="page-description">
+            You must be logged in to connect your Telegram account.
+        </p>
+        <button class="btn btn-primary" onclick="showLoginPopup()">
+            Login or Sign Up
+        </button>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Connect Telegram Group{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title">
+        Connect Telegram Group for '{{ channel.channel_name }}'
+    </h2>
+</div>
+
+<div class="form-card" style="text-align: center;">
+    {# This block shows when a group is already linked #}
+    {% if connection_status == 'connected' %}
+        <h3>Group Connected</h3>
+        <p class="page-description">
+            This channel is currently linked to the Telegram group: <br>
+            <strong>{{ group_details.group_title or 'Unnamed Group' }}</strong>
+        </p>
+        <form method="POST" action="{{ url_for('disconnect_group', channel_id=channel.id) }}" onsubmit="return confirm('Are you sure you want to disconnect this group?');">
+            <button type="submit" class="btn btn-error">Disconnect Group</button>
+        </form>
+
+    {# This block shows when a group is not yet linked #}
+    {% else %}
+        <h3>1. Add Bot to Your Group</h3>
+        <p class="page-description">
+            First, add the <strong>@{{ bot_username }}</strong> bot to your Telegram group as an administrator.
+        </p>
+        
+        <hr style="margin: 2rem 0;">
+
+        <h3>2. Link Your Group</h3>
+        <p class="page-description">
+            Then, send this exact command message in your Telegram group chat to link it to this channel.
+        </p>
+        <div class="code-block" style="background: var(--surface-dark); padding: 20px; border-radius: var(--radius-md); margin: 20px 0;">
+            <code style="font-size: 1.1rem; font-weight: 600;">/link_channel {{ connection_code }}</code>
+        </div>
+        <p class="text-muted">This code is valid for 10 minutes.</p>
+    {% endif %}
+</div>
+{% endblock %}

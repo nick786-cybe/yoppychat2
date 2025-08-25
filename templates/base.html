@@ -8,16 +8,525 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main-purged.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    {% block page_styles %}{% endblock %}
-    <script>
-        (function() {
-            const theme = localStorage.getItem('theme') || 'light';
-            if (theme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
+    
+    <style>
+        /* CSS for the Login Popup (Restored) */
+        .login-popup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000; animation: fadeIn 0.3s ease;
+        }
+        .login-popup-content {
+            background: var(--surface-light); padding: var(--spacing-2xl);
+            border-radius: var(--radius-xl); box-shadow: var(--shadow-xl);
+            width: 100%; max-width: 420px; text-align: center;
+            position: relative; animation: slideUp 0.4s ease;
+        }
+        .login-popup-close-btn {
+            position: absolute; top: 16px; right: 16px; background: none;
+            border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;
+            padding: 5px;
+        }
+        .login-popup-icon { margin-bottom: var(--spacing-lg); }
+        .login-popup-title {
+            font-size: 1.75rem; font-weight: 700; color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+        .login-popup-subtitle { color: var(--text-secondary); margin-bottom: var(--spacing-xl); }
+        .login-popup-google-btn {
+            display: flex; align-items: center; justify-content: center;
+            gap: var(--spacing-md); width: 100%; padding: var(--spacing-md);
+            background: var(--surface-light); color: var(--text-primary);
+            border: 1px solid var(--neutral-300); border-radius: var(--radius-md);
+            font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+        }
+        .login-popup-google-btn:hover { background: var(--surface-medium); }
+        .login-popup-terms { font-size: 0.8rem; color: var(--text-muted); margin-top: var(--spacing-lg); }
+        @media (max-width: 768px) {
+            #login-popup-modal { align-items: flex-end; }
+            #login-popup-modal .login-popup-content {
+                max-width: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+                animation: slideUpFromBottom 0.4s ease;
             }
-        })();
-    </script>
+            @keyframes slideUpFromBottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        }
+        /* === NEW SIDEBAR STYLES === */
+
+/* Redesigned Sidebar Header */
+.sidebar-header {
+    background: var(--surface-light); /* Changed from gradient */
+    border-bottom: 1px solid var(--neutral-200);
+    padding: var(--spacing-md) var(--spacing-lg); /* Adjust padding */
+}
+
+.sidebar-logo-link {
+    /* This rule can remain, but the text-specific ones are no longer needed */
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+
+
+
+
+
+/* Redesigned Sidebar Footer */
+.sidebar-footer {
+    padding: var(--spacing-md); /* Standardized padding */
+    margin-top: auto; /* This is the magic line that pushes the footer to the bottom */
+    border-top: 1px solid var(--neutral-200);
+}
+
+.sidebar-actions {
+    margin-bottom: var(--spacing-md);
+}
+
+.sidebar-action-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-action-item:hover {
+    background-color: var(--surface-medium);
+    color: var(--text-primary);
+}
+
+/* New User Profile Section at the very bottom */
+.user-profile-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-medium);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-details {
+    flex-grow: 1;
+    min-width: 0; /* Prevents overflow with long names */
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-button {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.logout-button:hover {
+    background-color: var(--neutral-200);
+    color: var(--accent-error);
+}
+
+.profile-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    z-index: 1001;
+}
+
+#profile-container:hover .profile-menu, .profile-menu.show {
+    display: block;
+}
+
+.profile-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    z-index: 1001;
+}
+
+.menu-header {
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--neutral-200);
+    margin-bottom: var(--spacing-md);
+}
+
+.menu-username {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.menu-email {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.menu-plan-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.menu-plan-name {
+    font-weight: 500;
+}
+
+.menu-upgrade-btn {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+
+.menu-credits-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    font-size: 0.875rem;
+}
+
+.menu-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-links a {
+    display: block;
+    padding: var(--spacing-sm) 0;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.menu-links a:hover {
+    color: var(--text-primary);
+}
+/* === Custom Notification Styles === */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification {
+    background: var(--surface-light);
+    color: var(--text-primary);
+    padding: 16px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    border-left: 5px solid;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification.hide {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+/* --- Notification Types --- */
+.notification.success {
+    border-left-color: var(--accent-success);
+}
+
+.notification.error {
+    border-left-color: var(--accent-error);
+}
+
+.notification.info {
+    border-left-color: var(--accent-info);
+}
+
+.notification-message {
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+/* In static/css/main-purged.css */
+
+/* New spinner for inline actions like the delete icon */
+.inline-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--accent-primary);
+    border-top-color: transparent; /* Makes it a classic spinner */
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes inline-spin {
+  0% { transform: scale(0.8); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+  100% { transform: scale(0.8); opacity: 1; }
+}
+
+.login-prompt-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    padding: var(--spacing-md);
+    background-color: var(--surface-medium);
+    border: 2px dashed var(--neutral-300);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.login-prompt-btn:hover {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-secondary);
+    color: var(--text-white);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.login-prompt-btn svg {
+    transition: transform 0.2s ease-in-out;
+}
+
+.login-prompt-btn:hover svg {
+    transform: translateX(3px);
+}
+/* Class to hide the SVG icon when the spinner is active */
+.delete-btn.deleting svg {
+    display: none;
+}
+/* Add this to your main CSS file */
+
+.pricing-grid-modal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+/* Reusing styles from your landing page for consistency */
+.pricing-card {
+    background: var(--surface-light);
+    padding: 2rem 1.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--neutral-200);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.pricing-card.featured {
+    border: 2px solid var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.popular-badge {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent-primary);
+    color: var(--text-white);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.3rem 0.8rem;
+    border-radius: var(--radius-full);
+}
+
+.pricing-card h4 { font-size: 1.5rem; font-weight: 700; }
+.pricing-card .price { font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0; }
+.pricing-card .price.price-featured { font-size: 2.5rem; }
+.pricing-card .price span { font-size: 1rem; font-weight: 500; color: var(--text-muted); }
+.pricing-features { list-style: none; margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.8rem; flex-grow: 1; }
+.pricing-features li { display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); }
+.pricing-features .icon { color: var(--accent-success); }
+
+.btn-pricing {
+    display: block; width: 100%; text-align: center;
+    padding: 0.9rem 1.5rem; border-radius: var(--radius-md);
+    font-weight: 600; text-decoration: none; transition: all 0.3s ease;
+}
+
+.btn-pricing.disabled {
+    background-color: var(--accent-success);
+    color: var(--text-white);
+    cursor: default;
+    opacity: 0.8;
+}
+
+.btn-pricing-neutral {
+    background-color: var(--neutral-200); color: var(--text-primary);
+}
+.btn-pricing-neutral:not(.disabled):hover { background-color: var(--neutral-300); }
+
+.btn-pricing-accent {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: var(--text-white);
+}
+.btn-pricing-accent:not(.disabled):hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+/* --- START: MODIFIED PRICING MODAL STYLES --- */
+@media (max-width: 950px) {
+    /* Apply a standard "center" alignment for the pricing modal */
+    #pricing-modal-overlay {
+        align-items: center;
+    }
+    
+    /* Constrain the pricing modal's size and make its content scrollable */
+    #pricing-modal-overlay .login-popup-content {
+        max-width: 90%; /* Use more screen width */
+        max-height: 85vh; /* Limit height to 85% of the viewport height */
+        overflow-y: auto; /* Allow vertical scrolling INSIDE the modal */
+        padding: 1.5rem; /* Reduce padding on mobile */
+        animation: slideUp 0.4s ease; /* Use a standard slide up animation */
+    }
+    
+    /* Stack pricing cards vertically */
+    .pricing-grid-modal {
+        grid-template-columns: 1fr;
+    }
+
+    /* Remove the "featured" scaling effect on mobile */
+    .pricing-card.featured {
+        transform: scale(1);
+    }
+}
+.menu-toggle-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.theme-switch input { display: none; }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--neutral-300);
+    transition: .3s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: var(--accent-primary);
+}
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+html[data-theme='dark'] .menu-toggle-option {
+    color: var(--text-secondary);
+}
+/* --- Dynamic Logo Styles for Dark Mode --- */
+
+/* By default, show the light logo and hide the dark one */
+.logo-dark {
+    display: none;
+}
+.logo-light {
+    display: block;
+}
+
+/* When dark mode is active, hide the light logo and show the dark one */
+html[data-theme='dark'] .logo-dark {
+    display: block;
+}
+html[data-theme='dark'] .logo-light {
+    display: none;
+}
+/* =================================================================
+   FIX: Sidebar Delete Button Theme Styles
+================================================================== */
+
+/* --- Base and Light Mode Styles --- */
+
+    </style>
+<script>
+    // This script prevents a flash of the wrong theme on page load
+    (function() {
+        const theme = localStorage.getItem('theme') || 'light';
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    })();
+</script>
+
 </head>
 <body>
     <div id="notification-container" class="notification-container"></div>
@@ -38,44 +547,22 @@
                 <div class="channel-section">
                     <div class="channel-section-title">Channels</div>
                     <div class="channel-list">
-                        {% if user_status %}
-                            {% set can_add_personal = user_status.usage.channels_processed < user_status.limits.max_channels %}
-
-                            {# For community owners, check if they can add more shared channels #}
-                            {% set can_add_shared = False %}
-                            {% if user_status.is_active_community_owner %}
-                                {# This part requires fetching community status, which might be complex here.
-                                   Assuming a simple check for now, but a more robust solution might need a dedicated function.
-                                   Let's rely on the backend to enforce the limit and focus on the UI state.
-                                   For simplicity, we'll just check if they are an owner. #}
-                                {% set can_add_shared = True %}
-                            {% endif %}
-
-                            {% if can_add_personal or can_add_shared %}
-                                <div class="add-channel-btn" onclick='location.href="{{ url_for("channel") }}"'>+ Add Channel</div>
-                            {% elif user_status.is_whop_user %}
-                                <div class="add-channel-btn" onclick="showUpgradePopup('You have reached your channel limit. Please upgrade for more.')">+ Add Channel (Upgrade)</div>
-                            {% else %}
-                                <div class="add-channel-btn disabled">Channel Limit Reached</div>
-                            {% endif %}
-                        {% endif %}
-
+                        <div class="add-channel-btn" onclick='location.href="{{ url_for("channel") }}"'>+ Add Channel</div>
+                        {# 2. Replace the old HTML with a call to the macro #}
                         {% for name, channel in saved_channels.items() %}
-                            {{ render_sidebar_channel_item(channel, name, community_status) }}
+                            {{ render_sidebar_channel_item(channel, name) }}
                         {% endfor %}
                     </div>
                 </div>
             </div>
-
-            {% if user and not session.get('active_community_id') %}
+            {% if user %}
             <div class="sidebar-actions-section">
-                <a href="{{ url_for('integrations') }}" class="sidebar-action-item">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
-                    <span>Integrations</span>
+                <a href="{{ url_for('connect_telegram') }}" class="sidebar-action-item">
+                    <img src="{{ url_for('static', filename='images/telegram.svg') }}" alt="Connect Telegram" width="20" height="20">
+                    <span>Connect Telegram</span>
                 </a>
             </div>
             {% endif %}
-
             <div class="sidebar-footer">
                 <div style="position: relative;" id="profile-container">
                     <div class="user-profile-section" id="user-profile-trigger" style="cursor: pointer;">
@@ -93,33 +580,33 @@
                             </a>
                         {% endif %}
                     </div>
-
-                    {% if user and user_status %}
+                    {% if user and subscription %}
                     <div class="profile-menu" id="user-profile-menu">
-                        <div class="menu-plan-display">
-                            <div class="plan-badge">{{ user_status.plan_name | title }} Plan</div>
-                            <p class="plan-queries">
-                                {% if user_status.limits.max_queries_per_month|string() == 'inf' %}
-                                    You have <strong>Unlimited</strong> queries.
-                                {% else %}
-                                    You have <strong>{{ (user_status.limits.max_queries_per_month - user_status.usage.queries_this_month) | int }}</strong> queries remaining.
-                                {% endif %}
-                            </p>
+                        <div class="menu-header">
+                            <div class="menu-username">{{ session.user.user_metadata.full_name or "User" }}</div>
+                            <div class="menu-email">{{ session.user.email }}</div>
                         </div>
-
-                        {% if user_status.plan_id != 'pro' %}
-                        <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-button">
-                            <span>✨ Upgrade Plan</span>
-                        </a>
-                        {% endif %}
-
+                        <div class="menu-plan-section">
+                            <span class="menu-plan-name">Subscription: {{ subscription.plan }}</span>
+                            <a href="#" onclick="showPricingModal(); return false;" class="menu-upgrade-btn">Upgrade</a>
+                        </div>
+                        <div class="menu-credits-section">
+                            <span class="menu-credits-label">
+                                Remaining Queries
+                            </span>
+                            <span class="menu-credits-value">
+                                {% if subscription.queries_remaining == 'inf' %}
+                                    Unlimited
+                                {% else %}
+                                    {{ subscription.queries_remaining }}
+                                {% endif %}
+                            </span>
+                        </div>
                         <ul class="menu-links">
-                            {% if not is_embedded_whop_user %}
-                             <li><a href="{{ url_for('about') }}">About</a></li>
-                             <li><a href="{{ url_for('terms') }}">Terms of Service</a></li>
-                             <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+                             <li><a href="/landing">About</a></li>
+                             <li><a href="#">Terms of Service</a></li>
+                             <li><a href="#">Privacy Policy</a></li>
                              <li><a href="#" onclick="handleLogout(event)" class="logout">Logout</a></li>
-                            {% endif %}
                              <li>
                                  <div class="menu-toggle-option">
                                      <span>Dark Mode</span>
@@ -135,22 +622,22 @@
                 </div>
             </div>
         </aside>
-
+        
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <main class="main-content {% if request.endpoint in ['ask', 'ask_channel'] %}has-mobile-nav{% endif %}">
-            <div class="card">
-                {% block content %}{% endblock %}
-            </div>
-        </main>
+<main class="main-content {% if request.endpoint in ['ask', 'ask_channel'] %}has-mobile-nav{% endif %}">
+    <div class="card">
+        {% block content %}{% endblock %}
+    </div>
+</main>
     </div>
 
     <div id="login-popup-modal" class="login-popup-overlay">
         <div class="login-popup-content">
             <button class="login-popup-close-btn" onclick="closeLoginPopup()">&times;</button>
             <div class="login-popup-icon">
-                <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-light" width="60" height="60">
-                <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-dark" width="60" height="60">
+                    <img src="{{ url_for('static', filename='images/logo/primiry__logo.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-light" width="60" height="60">
+                    <img src="{{ url_for('static', filename='images/logo/primiry_logo_dark.png') }}" alt="yoppychat Logo" class="sidebar-logo-img logo-dark" width="60" height="60">
             </div>
             <h3 class="login-popup-title">Welcome to YoppyChat</h3>
             <p class="login-popup-subtitle">Create an account or log in to continue</p>
@@ -172,26 +659,68 @@
             </div>
         </div>
     </div>
+<div id="pricing-modal-overlay" class="login-popup-overlay">
+    <div class="login-popup-content" style="max-width: 1200px; text-align: left;">
+        <button class="login-popup-close-btn" onclick="closePricingModal()">&times;</button>
+        <div style="padding: 1rem;">
+            <h3 class="login-popup-title" style="text-align: center;">Simple, Scalable Pricing</h3>
 
-    <div id="pricing-modal-overlay" class="login-popup-overlay">
-        <div class="login-popup-content" style="max-width: 1200px; text-align: left;">
-            <button class="login-popup-close-btn" onclick="closePricingModal()">&times;</button>
-            <div style="padding: 1rem;">
-                </div>
+                                        <p style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-weight: 500;">
+                We're committed to making this the best platform for creators. 90% of all revenue is reinvested directly into improving this project.
+            </p>
+            <div class="pricing-grid-modal">
+                    <div class="pricing-card">
+                        <h4>Free</h4>
+                        <p class="text-muted">Get a taste of what's possible.</p>
+                        <p class="price">₹0 <span>/ month</span></p>
+                        <a href="#" class="btn-pricing btn-pricing-neutral">Get Started</a>
+                        <ul class="pricing-features">
+                            <li><span class="icon">✓</span>3 Channel</li>
+                            <li><span class="icon">✓</span>Max 50 latest video Knowledge/channel</li>
+                            <li><span class="icon">✓</span>50 queries/month</li>
+                            <li><span class="icon">✓</span>Manual Refresh</li>
+                        </ul>
+                    </div>
+
+                    <div class="pricing-card featured">
+                        <span class="popular-badge">MOST POPULAR</span>
+                        <h4>Creator</h4>
+                        <p class="text-muted">For the serious community builder.</p>
+                        <p class="price price-featured">₹299 <span>/ month</span></p>
+                        <a href="#" class="btn-pricing btn-pricing-accent">Choose Creator</a>
+                        <ul class="pricing-features">
+                            <li><span class="icon">✓</span>10 Channels</li>
+                            <li><span class="icon">✓</span>Max 250 latest video Knowledge/channel</li>
+                            <li><span class="icon">✓</span>2,500 queries/month</li>
+                            <li><span class="icon">✓</span>Auto Weekly Refresh</li>
+                            <li><span class="icon">✓</span>Faster Responses</li>
+                            <li><span class="icon">✓</span>Access to Your Persona bot for your community</li>
+                        </ul>
+                    </div>
+
+                    <div class="pricing-card">
+                        <h4>Pro</h4>
+                        <p class="text-muted">A fully branded, white-glove experience.</p>
+                        <p class="price">₹1,499 <span>/ month</span></p>
+                        <a href="#" class="btn-pricing btn-pricing-neutral">Choose Pro</a>
+                        <ul class="pricing-features">
+                             <li><span class="icon">✓</span>Unlimited Channels</li>
+                            <li><span class="icon">✓</span>Unlimited video knowledge/channel</li>
+                            <li><span class="icon">✓</span>10,000 queries/month</li>
+                            <li><span class="icon">✓</span>Faster Responses</li>
+                            <li><span class="icon">✓</span><strong>White-labeled channel knowledge bot (custom name & profile pic)</strong></li>
+                        </ul>
+                    </div>
+            </div>
         </div>
     </div>
+</div>
+<script>
+    // ===================================================================
+    //  1. GLOBALLY ACCESSIBLE HELPER FUNCTIONS
+    // ===================================================================
 
-    <script>
-        // All JavaScript functions remain the same
-    </script>
-    {% block page_scripts %}{% endblock %}
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-
-    <script>
-        // All JavaScript functions (showNotification, showLoginPopup, etc.) remain the same
-        // ...
-
+    /** Displays a notification message. */
     function showNotification(message, type = 'info') {
         const container = document.getElementById('notification-container');
         if (!container) return;
@@ -205,7 +734,7 @@
             setTimeout(() => { if (container.contains(notification)) container.removeChild(notification); }, 500);
         }, 5000);
     }
-
+    
     /** Displays the login modal. */
     function showLoginPopup() {
         const modal = document.getElementById('login-popup-modal');
@@ -223,7 +752,7 @@
         const modal = document.getElementById('pricing-modal-overlay');
         if (modal) modal.style.display = 'flex';
     }
-
+    
     /** Closes the pricing modal. */
     function closePricingModal() {
         const modal = document.getElementById('pricing-modal-overlay');
@@ -356,9 +885,9 @@
             e.preventDefault();
             showLoginPopup();
         }));
-
+        
         if(loginCloseBtn) loginCloseBtn.addEventListener('click', closeLoginPopup);
-
+        
         // This is new: closes the modal if you click the background overlay
         if(loginModal) {
             loginModal.addEventListener('click', (event) => {
@@ -394,56 +923,12 @@
         } else {
             console.warn("Supabase credentials not found. Auth features will be disabled.");
         }
-            // All the core site logic (theme toggle, hamburger, etc.) remains the same
-            // ...
+    });
+</script>
+    
+{% block page_scripts %}{% endblock %}
 
-            // --- JAVASCRIPT FOR PROFILE MENU (CLICK VERSION) ---
-            const profileTrigger = document.getElementById('user-profile-trigger');
-            const profileMenu = document.getElementById('user-profile-menu');
-
-            if (profileTrigger && profileMenu) {
-                profileTrigger.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    profileMenu.classList.toggle('show');
-                });
-
-                window.addEventListener('click', () => {
-                    if (profileMenu.classList.contains('show')) {
-                        profileMenu.classList.remove('show');
-                    }
-                });
-            }
-        });
-
-    /**
-     * Displays a customized upgrade popup.
-     * @param {string} message - The message to display in the popup.
-     */
-    function showUpgradePopup(message) {
-        const modal = document.getElementById('pricing-modal-overlay');
-        const modalContent = modal ? modal.querySelector('.login-popup-content > div') : null;
-
-        if (modal && modalContent) {
-            // Set the content for the upgrade message
-            modalContent.innerHTML = `
-                <div style="text-align: center; padding: 1rem 2rem;">
-                    <h3 style="font-size: 1.5rem; color: var(--text-primary); margin-bottom: 0.75rem;">Upgrade Required</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">${message}</p>
-                    <a href="https://whop.com/yoppychat-ai/personal-plan/?a=user"
-                       target="_blank"
-                       class="btn-upgrade"
-                       style="display: inline-block; background-color: var(--accent-primary); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
-                        Upgrade to Personal Plan
-                    </a>
-                </div>
-            `;
-            modal.style.display = 'flex'; // Show the modal
-        }
-    }
-    </script>
-
-
-
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

@@ -1,315 +1,184 @@
-# yoppychat2/utils/subscription_utils.py
+# In utils/subscription_utils.py
 
 import os
+import logging
+from datetime import date
 from functools import wraps
 from flask import session, jsonify
 import redis
 import json
 from .supabase_client import get_supabase_admin_client
-from .db_utils import get_profile
-from . import whop_api
 
-# --- Redis Caching Setup ---
+# --- (This section is unchanged) ---
 try:
     redis_client = redis.from_url(os.environ.get("REDIS_URL"))
-    CACHE_DURATION_SECONDS = 300 # Cache for 5 minutes
+    CACHE_DURATION_SECONDS = 300 
     print("Successfully connected to Redis for caching.")
 except Exception as e:
     redis_client = None
     print(f"Could not connect to Redis for caching: {e}. Caching will be disabled.")
 
-# --- Plan Definitions ---
-COMMUNITY_PLANS = {
-    'basic_community': {
-        'name': 'Basic Community',
-        'shared_channels_allowed': 1,
-        'queries_per_month': 50
-    },
-    'pro_community': {
-        'name': 'Pro Community',
-        'shared_channels_allowed': 2,
-        'queries_per_month': 100
-    },
-    'rich_community': {
-        'name': 'Rich Community',
-        'shared_channels_allowed': 5,
-        'queries_per_month': 250
-    }
-}
-
 PLANS = {
-    'free': { 'name': 'Free', 'max_channels': 0, 'max_queries_per_month': 50 },
-    'creator': { 'name': 'Creator', 'max_channels': 10, 'max_queries_per_month': 2500 },
-    'pro': { 'name': 'Pro', 'max_channels': float('inf'), 'max_queries_per_month': 10000 },
-    'whop_basic_member': { 'name': 'Basic Member', 'max_channels': 2, 'max_queries_per_month': 50 },
-    'whop_pro_member': { 'name': 'Pro Member', 'max_channels': 5, 'max_queries_per_month': 100 },
-    'whop_rich_member': { 'name': 'Rich Member', 'max_channels': 10, 'max_queries_per_month': 300 }
+    'free': {
+        'name': 'Free',
+        'max_channels': 3,
+        'max_queries_per_month': 50,
+        'max_videos_per_channel': 1
+    },
+    'creator': {
+        'name': 'Creator',
+        'max_channels': 10,
+        'max_queries_per_month': 2500,
+        'max_videos_per_channel': 250
+    },
+    'pro': {
+        'name': 'Pro',
+        'max_channels': float('inf'),
+        'max_queries_per_month': 10000,
+        'max_videos_per_channel': float('inf')
+    }
 }
 
-def get_community_status(community_id: str) -> dict:
+
+# --- START: COMPLETE AND CORRECTED FUNCTION ---
+def get_user_subscription_status(user_id):
     """
-    Fetches a community's plan, limits, and current usage.
+    Fetches the user's profile, subscription plan, and usage stats.
+    Caches results in Redis for 5 minutes to improve performance.
     """
-    cache_key = f"community_status:{community_id}"
+    cache_key = f"user_status:{user_id}"
     if redis_client:
         try:
             cached_status = redis_client.get(cache_key)
             if cached_status:
-                return json.loads(cached_status)
+                logging.info(f"Cache HIT for user {user_id}.")
+                loaded_data = json.loads(cached_status)
+                # Convert 'inf' strings back to float('inf')
+                if loaded_data.get('limits', {}).get('max_queries_per_month') == 'inf':
+                    loaded_data['limits']['max_queries_per_month'] = float('inf')
+                if loaded_data.get('limits', {}).get('max_channels') == 'inf':
+                    loaded_data['limits']['max_channels'] = float('inf')
+                return loaded_data
         except redis.RedisError as e:
-            print(f"Redis GET error for community {community_id}: {e}. Fetching from DB.")
+            logging.error(f"Redis GET error for user {user_id}: {e}. Fetching from DB.")
+    
+    logging.info(f"Cache MISS for user {user_id}. Fetching from database.")
 
-    supabase_admin = get_supabase_admin_client()
-    response = supabase_admin.table('communities').select('*').eq('id', community_id).single().execute()
-    if not response.data:
-        return None
+    try:
+        supabase_admin = get_supabase_admin_client()
+        profile_data = None
+        
+        # 1. Get user profile
+        profile_resp = supabase_admin.table('user_profiles').select('*').eq('id', user_id).execute()
+        if not profile_resp.data:
+            # This is a fallback and shouldn't happen for logged-in users, but is safe to have
+            return None 
+        profile_data = profile_resp.data[0]
 
-    community_data = response.data
-    plan_id = community_data.get('plan_id', 'basic_community')
-    plan_details = COMMUNITY_PLANS.get(plan_id, COMMUNITY_PLANS['basic_community'])
+        plan_name = profile_data.get('subscription_plan', 'free')
+        plan_limits = PLANS.get(plan_name, PLANS['free'])
 
-    status = {
-        'community_id': community_id,
-        'plan_id': plan_id,
-        'plan_name': plan_details['name'],
-        'limits': {
-            'shared_channel_limit': plan_details['shared_channels_allowed'],
-            'queries_per_month': plan_details.get('queries_per_month', 50),
-            'query_limit': community_data.get('query_limit', 0),
-            'owner_trial_limit': 10
-        },
-        'usage': {
-            'queries_used': community_data.get('queries_used', 0),
-            'trial_queries_used': community_data.get('trial_queries_used', 0)
-        }
-    }
-
-    if redis_client:
-        redis_client.setex(cache_key, CACHE_DURATION_SECONDS, json.dumps(status))
-
-    return status
-
-def get_user_status(user_id: str, active_community_id: str = None) -> dict:
-    """
-    Fetches a user's status with the final, corrected logic.
-    """
-    cache_key = f"user_status:{user_id}:community:{active_community_id or 'none'}"
-    if redis_client:
-        try:
-            cached_status = redis_client.get(cache_key)
-            if cached_status:
-                cached_data = json.loads(cached_status)
-                if cached_data.get('limits', {}).get('max_channels') == 'inf':
-                    cached_data['limits']['max_channels'] = float('inf')
-                if cached_data.get('limits', {}).get('max_queries_per_month') == 'inf':
-                    cached_data['limits']['max_queries_per_month'] = float('inf')
-                return cached_data
-        except redis.RedisError as e:
-            print(f"Redis GET error for user {user_id}: {e}. Fetching from DB.")
-
-    supabase_admin = get_supabase_admin_client()
-    profile = get_profile(user_id)
-    if not profile:
-        return None
-
-    is_whop_user = bool(profile.get('whop_user_id'))
-    personal_plan_id = profile.get('personal_plan_id') or profile.get('direct_subscription_plan')
-
-    raw_plan_id = None
-    plan_details = {}
-
-    # 1. Determine the user's plan ID based on their status and subscriptions.
-    if personal_plan_id:
-        # User has a personal plan. Check if it's valid for their user type.
-        is_valid_plan = False
-        if is_whop_user and personal_plan_id.startswith('whop_'):
-            is_valid_plan = True
-        elif not is_whop_user and personal_plan_id in ['creator', 'pro', 'free']:
-            is_valid_plan = True
-
-        if is_valid_plan and personal_plan_id in PLANS:
-            raw_plan_id = personal_plan_id
+        # 2. Get usage stats
+        usage_resp = supabase_admin.table('usage_stats').select('*').eq('user_id', user_id).execute()
+        if not usage_resp.data:
+            # Create usage stats if they don't exist
+            usage_insert_resp = supabase_admin.table('usage_stats').insert({
+                'user_id': user_id,
+                'queries_this_month': 0,
+                'channels_processed': 0,
+                'last_reset_date': date.today().isoformat()
+            }).execute()
+            usage_data = usage_insert_resp.data[0]
         else:
-            # Plan ID in DB is invalid or doesn't match user type. Fall through to defaults.
-            personal_plan_id = None # Nullify to trigger default logic.
+            usage_data = usage_resp.data[0]
 
-    if not raw_plan_id:
-        # User has no valid personal plan, determine default.
-        if is_whop_user and active_community_id:
-            raw_plan_id = 'community_base' # Virtual plan for default community members
-        elif is_whop_user:
-            raw_plan_id = 'whop_base' # Virtual plan for Whop users outside a community
-        else:
-            raw_plan_id = 'free'
+        # 3. Reset monthly query count if a new month has started
+        if usage_data.get('last_reset_date'):
+            last_reset = date.fromisoformat(usage_data['last_reset_date'])
+            if last_reset.month != date.today().month:
+                logging.info(f"Resetting monthly query count for user {user_id}.")
+                update_resp = supabase_admin.table('usage_stats').update({
+                    'queries_this_month': 0,
+                    'last_reset_date': date.today().isoformat()
+                }).eq('user_id', user_id).execute()
+                if update_resp.data:
+                    usage_data = update_resp.data[0]
 
-    # 2. Get the plan's limits and name.
-    if raw_plan_id == 'community_base':
-        community_status = get_community_status(active_community_id)
-        plan_details = {
-            'name': community_status.get('plan_name', 'Community Member') if community_status else 'Community Member',
-            'max_channels': 0,
-            'max_queries_per_month': community_status['limits'].get('queries_per_month', 50) if community_status else 50
+        queries_used = usage_data.get('queries_this_month', 0)
+        max_queries = plan_limits.get('max_queries_per_month', 0)
+        
+        queries_remaining_value = float('inf') if max_queries == float('inf') else int(max_queries - queries_used)
+
+        # 4. Construct the complete status dictionary
+        status_to_cache = {
+            'profile': profile_data,
+            'plan': plan_name,
+            'usage': usage_data,
+            'limits': plan_limits,
+            'queries_remaining': queries_remaining_value 
         }
-    elif raw_plan_id == 'whop_base':
-        plan_details = { 'name': 'Basic Member', 'max_channels': 0, 'max_queries_per_month': 50 }
-    else:
-        # It's a real plan from the PLANS dict.
-        plan_details = PLANS.get(raw_plan_id, PLANS['free'])
 
-    # 3. Construct the final status object. No more stacking or overwrites needed.
-    status = {
-        'user_id': user_id,
-        'plan_id': raw_plan_id,
-        'plan_name': plan_details.get('name', 'Unknown Plan'),
-        'has_personal_plan': bool(personal_plan_id),
-        'is_whop_user': is_whop_user,
-        'active_community_id': active_community_id,
-        'is_active_community_owner': False,
-        'community_role': None,
-        'limits': plan_details.copy(),
-        'usage': {
-            'queries_this_month': get_profile(user_id).get('queries_this_month', 0),
-            'channels_processed': get_profile(user_id).get('channels_processed', 0)
-        }
-    }
+        # 5. Cache the result in Redis before returning
+        if redis_client:
+            try:
+                def json_default(o):
+                    if o == float('inf'):
+                        return 'inf' 
+                    raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+                
+                redis_client.setex(
+                    cache_key, 
+                    CACHE_DURATION_SECONDS, 
+                    json.dumps(status_to_cache, default=json_default)
+                )
+                logging.info(f"Cache SET for user {user_id}.")
+            except redis.RedisError as e:
+                 logging.error(f"Redis SETEX error for user {user_id}: {e}.")
 
-    if active_community_id:
-        community_res = supabase_admin.table('communities').select('owner_user_id').eq('id', active_community_id).single().execute()
-        if community_res.data and str(community_res.data['owner_user_id']) == str(user_id):
-            status['is_active_community_owner'] = True
-        role = whop_api.get_user_role_in_company(user_id)
-        status['community_role'] = role
+        return status_to_cache
+        
+    except Exception as e:
+        logging.error(f"Unhandled exception in get_user_subscription_status for user {user_id}: {e}", exc_info=True)
+        return None
+# --- END: COMPLETE AND CORRECTED FUNCTION ---
 
-    if redis_client:
-        serializable_status = json.loads(json.dumps(status, default=lambda o: 'inf' if o == float('inf') else o))
-        redis_client.setex(cache_key, CACHE_DURATION_SECONDS, json.dumps(serializable_status))
 
-    return status
-
-def limit_enforcer(check_type: str):
+def subscription_required(check_type):
     """
-    Decorator to enforce limits. Handles both direct users and community users.
+    A decorator to verify a user's subscription status before allowing an action.
     """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if 'user' not in session:
                 return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
-
+            
             user_id = session['user']['id']
-            active_community_id = session.get('active_community_id')
-            user_status = get_user_status(user_id, active_community_id)
+            status = get_user_subscription_status(user_id)
 
-            if not user_status:
-                 return jsonify({'status': 'error', 'message': 'Could not verify user.'}), 500
+            if not status or 'limits' not in status or 'usage' not in status:
+                 return jsonify({'status': 'error', 'message': 'Could not verify user subscription.'}), 500
+            
+            # Use .get() for safer dictionary access
+            max_channels = status['limits'].get('max_channels', 0)
+            max_queries = status['limits'].get('max_queries_per_month', 0)
 
-            # --- Query Limit Logic ---
-            if check_type == 'query':
-                max_queries = user_status['limits'].get('max_queries_per_month', 0)
-                if max_queries != float('inf') and user_status['usage']['queries_this_month'] >= max_queries:
+            if check_type == 'channel':
+                current_channels = status['usage'].get('channels_processed', 0)
+                if current_channels >= max_channels:
                     return jsonify({
-                        'status': 'limit_reached',
-                        'message': f"You've reached your monthly query limit of {int(max_queries)}."
+                        'status': 'limit_reached', 
+                        'message': f"You have reached the maximum of {max_channels} channels for the '{status['plan']}' plan."
                     }), 403
-
-            # --- Personal Channel Limit Logic ---
-            elif check_type == 'channel':
-                max_channels = user_status['limits'].get('max_channels', 0)
-                current_channels = user_status['usage'].get('channels_processed', 0)
-                if max_channels != float('inf') and current_channels >= max_channels:
-                    message = f"You have reached the maximum of {max_channels} personal channels for your plan."
-                    if user_status.get('is_whop_user'):
-                        return jsonify({
-                            'status': 'limit_reached',
-                            'message': message,
-                            'action': 'show_upgrade_popup'
-                        }), 403
-                    else:
-                        return jsonify({
-                            'status': 'limit_reached',
-                            'message': message
-                        }), 403
+            
+            elif check_type == 'query':
+                current_queries = status['usage'].get('queries_this_month', 0)
+                if current_queries >= max_queries:
+                     return jsonify({
+                        'status': 'limit_reached', 
+                        'message': f"You have reached your monthly query limit of {max_queries} for the '{status['plan']}' plan."
+                    }), 403
 
             return f(*args, **kwargs)
         return decorated_function
     return decorator
-
-def community_channel_limit_enforcer(f):
-    """
-    Decorator for community owners adding shared channels.
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
-
-        user_id = session['user']['id']
-        active_community_id = session.get('active_community_id')
-
-        if not active_community_id:
-            return jsonify({'status': 'error', 'message': 'No active community context found.'}), 400
-
-        user_status = get_user_status(user_id, active_community_id)
-
-        if not user_status.get('is_active_community_owner'):
-            return jsonify({'status': 'error', 'message': 'Only community owners can perform this action.'}), 403
-
-        community_status = get_community_status(active_community_id)
-        if not community_status:
-            return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
-
-        from . import db_utils
-        current_shared_channels = db_utils.count_shared_channels(active_community_id)
-        max_shared_channels = community_status['limits'].get('shared_channel_limit', 0)
-
-        if current_shared_channels >= max_shared_channels:
-            return jsonify({
-                'status': 'limit_reached',
-                'message': f"You have reached the maximum of {max_shared_channels} shared channels for your community's plan."
-            }), 403
-
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-def admin_channel_limit_enforcer(f):
-    """
-    Decorator for community admins adding any channel (personal or shared).
-    Their total channel count is limited by the community plan's `shared_channels_allowed`.
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
-
-        user_id = session['user']['id']
-        active_community_id = session.get('active_community_id')
-
-        if not active_community_id:
-            return jsonify({'status': 'error', 'message': 'No active community context found.'}), 400
-
-        user_status = get_user_status(user_id, active_community_id)
-
-        if not user_status.get('is_active_community_owner'):
-            # This should not be reached if routes are set up correctly, but as a safeguard.
-            return jsonify({'status': 'error', 'message': 'Only community owners can perform this action.'}), 403
-
-        community_status = get_community_status(active_community_id)
-        if not community_status:
-            return jsonify({'status': 'error', 'message': 'Could not verify community status.'}), 500
-
-        from . import db_utils
-        # Use the new unified channel counting function for the admin
-        current_total_channels = db_utils.count_channels_for_user(user_id)
-        # The admin's total limit is the community's shared channel limit
-        max_total_channels = community_status['limits'].get('shared_channel_limit', 0)
-
-        if current_total_channels >= max_total_channels:
-            return jsonify({
-                'status': 'limit_reached',
-                'message': f"As a community admin, your total channel limit is {max_total_channels}. You have reached this limit."
-            }), 403
-
-        return f(*args, **kwargs)
-
-    return decorated_function

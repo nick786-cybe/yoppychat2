@@ -230,7 +230,7 @@ def get_routed_context(question: str, channel_data: Optional[dict], user_id: str
                     logging.warning(f"Could not determine latest video or generate summary: {e}. Falling back to semantic search.")
 
     # --- Intent 2: Identity questions (no changes needed here) ---
-    identity_keywords = ['who are you', 'what is your name', 'introduce yourself','your email']
+    identity_keywords = ['who are you', 'what is your name', 'introduce yourself']
     if any(keyword in question_lower for keyword in identity_keywords):
         # ... (this part remains the same)
         print("Intent Detected: Identity. Prepending intro context.")
@@ -485,7 +485,7 @@ def count_tokens(text: str, model: str = "gpt-4") -> int:
     
     return len(encoding.encode(text))
 
-def answer_question_stream(question_for_prompt: str, question_for_search: str, channel_data: dict = None, video_ids: set = None, user_id: str = None, access_token: str = None, tone: str = 'Casual', on_complete: callable = None) -> Iterator[str]:
+def answer_question_stream(question_for_prompt: str, question_for_search: str, channel_data: dict = None, video_ids: set = None, user_id: str = None, access_token: str = None, tone: str = 'Casual') -> Iterator[str]:
     """
     Finds relevant context from documents and streams an answer to the user's question.
     """
@@ -600,32 +600,22 @@ def answer_question_stream(question_for_prompt: str, question_for_search: str, c
         'temperature': temperature
     }
 
-    try:
-        for chunk in stream_function(prompt, model, **stream_kwargs):
-            if not first_token_time_logged:
-                first_token_end_time = time.perf_counter()
-                print(f"[TIME_LOG] LLM time to first token: {first_token_end_time - llm_stream_start_time:.4f} seconds.")
-                first_token_time_logged = True
+    for chunk in stream_function(prompt, model, **stream_kwargs):
+        if not first_token_time_logged:
+            first_token_end_time = time.perf_counter()
+            print(f"[TIME_LOG] LLM time to first token: {first_token_end_time - llm_stream_start_time:.4f} seconds.")
+            first_token_time_logged = True
+            
+        full_answer += chunk
+        yield f"data: {json.dumps({'answer': chunk})}\n\n"
 
-            full_answer += chunk
-            yield f"data: {json.dumps({'answer': chunk})}\n\n"
-
-        llm_stream_end_time = time.perf_counter()
-        if not first_token_time_logged and not full_answer:
-            print("[TIME_LOG] LLM stream produced no output.")
-        else:
-            print(f"[TIME_LOG] Full LLM stream generation took {llm_stream_end_time - llm_stream_start_time:.4f} seconds.")
-
-        # If the stream completes without error, call the callback
-        if on_complete:
-            on_complete()
-
-    except Exception as e:
-        logging.error(f"Streaming error in answer_question_stream: {e}", exc_info=True)
-        yield f"data: {json.dumps({'error': 'An error occurred while generating the answer.'})}\n\n"
-
-    finally:
-        yield "data: [DONE]\n\n"
+    llm_stream_end_time = time.perf_counter()
+    if not first_token_time_logged and not full_answer:
+        print("[TIME_LOG] LLM stream produced no output.")
+    else:
+        print(f"[TIME_LOG] Full LLM stream generation took {llm_stream_end_time - llm_stream_start_time:.4f} seconds.")
+    
+    yield "data: [DONE]\n\n"
     
     if full_answer and "Error:" not in full_answer:
         try:

@@ -3,11 +3,360 @@
 
 {% block title %}Process Channel - YoppyChat AI{% endblock %}
 
-{% block page_styles %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/channel.css') }}">
-{% endblock %}
-
 {% block content %}
+<style>
+:root {
+    --primary-bg: #fdf8f3;
+    --surface-light: #ffffff;
+    --text-primary: #2a1f16;
+    --text-secondary: #5a4a32;
+    --accent-primary: #ff9a56;
+    --accent-secondary: #ff8c42;
+    --neutral-200: #f0e6d6;
+    --shadow-light: rgba(42, 31, 22, 0.08);
+    --shadow-medium: rgba(42, 31, 22, 0.12);
+    --shadow-strong: rgba(42, 31, 22, 0.16);
+}
+
+.hero-section {
+    background: linear-gradient(135deg, var(--surface-light) 0%, var(--primary-bg) 100%);
+    border-radius: 24px;
+    padding: 15rem 2rem;
+    margin-bottom: 3rem;
+    text-align: center;
+
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, var(--accent-primary)15 0%, transparent 70%);
+    opacity: 0.05;
+    pointer-events: none;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.hero-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    border-radius: 20px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 24px rgba(255, 154, 86, 0.3);
+}
+
+.hero-icon svg {
+    width: 40px;
+    height: 40px;
+    color: white;
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.hero-subtitle {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+}
+
+.channel-form {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-container {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.channel-input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3.5rem;
+    font-size: 1rem;
+    border: 2px solid var(--neutral-200);
+    border-radius: 16px;
+    background: var(--surface-light);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+.channel-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 4px 16px rgba(255, 154, 86, 0.2);
+    transform: translateY(-1px);
+}
+
+.channel-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+}
+
+.input-hint {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
+.input-hint code {
+    background: var(--neutral-200);
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-size: 0.8em;
+    color: var(--text-primary);
+}
+
+.process-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(255, 154, 86, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.process-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 154, 86, 0.4);
+}
+
+.process-btn:active {
+    transform: translateY(0);
+}
+
+.process-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-icon {
+    font-size: 1.2em;
+}
+
+/* --- START: NEW STYLES for the processing container --- */
+.processing-display {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--surface-light) 0%, var(--primary-bg) 100%);
+    border-radius: 16px;
+    border: 1px solid var(--neutral-200);
+    transition: all 0.3s ease-in-out;
+}
+
+.processing-display .processing-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+/* --- END: NEW STYLES --- */
+
+/* Processing card specific styles */
+.processing-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.processing-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: var(--neutral-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.processing-avatar::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 154, 86, 0.1) 50%, transparent 70%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.channel-card-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--neutral-200);
+    border-top: 3px solid var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    position: relative;
+    z-index: 2;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.processing-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.processing-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    text-align: left;
+}
+
+.progress-container {
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--neutral-200);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-bar-inner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    animation: progress-shine 2s infinite;
+}
+
+@keyframes progress-shine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-align: left;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+
+    .processing-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+    }
+
+    .processing-details {
+        width: 100%;
+    }
+
+    .processing-title, .progress-text {
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    /* .hero-section {
+        padding: 1.5rem 1rem;
+    } */
+    
+    .hero-title {
+        font-size: 1.75rem;
+    }
+    
+    .channel-input {
+        padding: 0.875rem 0.875rem 0.875rem 3rem;
+    }
+    
+    .process-btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+}
+</style>
+
 <div class="hero-section">
     <div class="hero-content">
         <!-- <div class="hero-icon">
@@ -19,15 +368,15 @@
         <h1 class="hero-title">Add Your YouTube Channel</h1>
         <p class="hero-subtitle">YoppyChat studies every video you’ve ever published—your insights, stories, and signature style—then lets viewers chat with an AI version of you whenever inspiration strikes.
 </p>
-
+        
         <form id="channelForm" class="channel-form" onsubmit="return false;">
             <div class="form-group">
                 <div class="input-container">
-                    <input type="url"
-                           name="channel_url"
-                           id="channel_url"
+                    <input type="url" 
+                           name="channel_url" 
+                           id="channel_url" 
                            class="channel-input"
-                           placeholder="Enter YouTube channel URL (e.g., https://youtube.com/@mkbhd)"
+                           placeholder="Enter YouTube channel URL (e.g., https://youtube.com/@mkbhd)" 
                            required
                            aria-label="YouTube Channel URL Input">
                     <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -39,9 +388,6 @@
                     Supported formats: <code>https://youtube.com/@channelname</code>
                 </div>
             </div>
-
-
-
             <button type="submit" class="process-btn">
                 <span class="btn-icon">🚀</span>
                 <span>Process Channel</span>
@@ -78,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const processingContainer = document.getElementById('processingContainer');
     const progressBar = document.getElementById('progressBarInner');
     const progressText = document.getElementById('progressText');
-
+    
     const pollingIntervals = {};
 
     function stopPolling(taskId) {
@@ -95,125 +441,55 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function checkTaskStatus(taskId) {
-        const processingCard = document.querySelector(`.channel-item-wrapper[data-task-id="${taskId}"]`);
-
         fetch(`/task_result/${taskId}`)
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'complete') {
+                // If the user navigated away or the view was reset, stop polling
+                if (processingContainer.style.display === 'none') {
                     stopPolling(taskId);
-                    // Hide the main processing container and show the form again
-                    showFormView(true);
+                    return;
+                }
 
-                    const channelName = processingCard ? processingCard.dataset.channelName : null;
-                    if (channelName) {
-                        // Fetch final details to build the 'ready' card
-                        fetch(`/api/channel_details/${channelName}`)
-                            .then(res => res.json())
-                            .then(details => {
-                                if (details.current_channel && processingCard) {
-                                    const newCard = document.createElement('div');
-                                    newCard.className = 'channel-item-wrapper';
-                                    newCard.dataset.channelId = details.current_channel.id;
+                // Update the progress bar and status text
+                if (progressBar) progressBar.style.width = `${data.progress || 0}%`;
+                if (progressText) progressText.textContent = data.message || 'Processing...';
 
-                                    const thumbnailHtml = details.current_channel.channel_thumbnail
-                                        ? `<img src="${details.current_channel.channel_thumbnail}" alt="${channelName}" class="channel-avatar">`
-                                        : '';
-
-                                    newCard.innerHTML = `
-                                        <a href="/ask/channel/${channelName}" class="channel-link">
-                                            ${thumbnailHtml}
-                                            <span class="channel-name">${channelName}</span>
-                                        </a>
-                                        <button class="delete-btn" onclick="confirmDeleteChannel('${details.current_channel.id}', '${channelName}', this)" aria-label="Delete ${channelName}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                        </button>
-                                    `;
-                                    processingCard.replaceWith(newCard);
-                                    showNotification(data.message || `Channel '${channelName}' is ready!`, 'success');
-                                } else {
-                                    // Fallback to reload if details fetch fails
-                                    showNotification('Channel processed. Reloading page...', 'success');
-                                    setTimeout(() => window.location.reload(), 1500);
-                                }
-                            })
-                            .catch(() => {
-                                showNotification('Channel processed. Reloading page...', 'success');
-                                setTimeout(() => window.location.reload(), 1500);
-                            });
-                    } else {
-                        // Fallback to reload if no channel name is found
-                        showNotification('Channel processed. Reloading page...', 'success');
-                        setTimeout(() => window.location.reload(), 1500);
-                    }
-                } else if (data.status === 'failed') {
+                // When the task is done, show a message and reload the page
+                if (data.status === 'complete' || data.status === 'failed') {
                     stopPolling(taskId);
-                    showNotification(data.message || 'A processing error occurred.', 'error');
-                    if (processingCard) processingCard.remove();
-                    showFormView(true); // Show form again
-                } else {
-                    // Update progress bar if the main container is visible
-                    if (processingContainer.style.display !== 'none') {
-                        if (progressBar) progressBar.style.width = `${data.progress || 0}%`;
-                        if (progressText) progressText.textContent = data.message || 'Processing...';
-                    }
+                    const message = data.message || (data.status === 'complete' ? 'Channel processed successfully!' : 'A processing error occurred.');
+                    const type = data.status === 'complete' ? 'success' : 'error';
+                    showNotification(message, type);
+                    
+                    // Reload to show a clean page state
+                    setTimeout(() => window.location.reload(), 2500); 
                 }
             })
             .catch(err => {
                 console.error('Polling error:', err);
                 stopPolling(taskId);
-                if (processingCard) processingCard.remove();
-                showFormView(true);
-                showNotification('Error checking task status.', 'error');
+                showNotification('Error checking task status. Reloading.', 'error');
+                window.location.reload();
             });
     }
 
     function submitChannelForm(channelUrl) {
         // Hide the form and show the progress bar container
         showFormView(false);
-
+        
         const formData = new FormData();
         formData.append('channel_url', channelUrl);
 
-        // Determine the target URL based on the checkbox for shared channels
-        const isSharedCheckbox = document.getElementById('is_shared_channel');
-        const isShared = isSharedCheckbox && isSharedCheckbox.checked;
-        const targetUrl = isShared ? "{{ url_for('add_shared_channel') }}" : "{{ url_for('channel') }}";
-
-        fetch(targetUrl, {
+        fetch("{{ url_for('channel') }}", {
             method: 'POST',
             body: formData
         })
         .then(res => {
-            if (!res.ok) {
-                // When the response is not OK, we expect a JSON error object from our server.
-                // We'll throw an error object that includes the JSON payload.
-                return res.json().then(err => { throw err; });
-            }
+            if (!res.ok) return res.json().then(err => { throw new Error(err.message || 'Server error') });
             return res.json();
         })
         .then(data => {
             if (data.status === 'processing' && data.task_id) {
-                // --- NEW: Add processing card to sidebar ---
-                const channelNameMatch = channelUrl.match(/@([a-zA-Z0-9_.-]+)/);
-                const channelName = channelNameMatch ? channelNameMatch[1] : 'New Channel';
-                const sidebarList = document.querySelector('.sidebar .channel-list');
-                if (sidebarList) {
-                    const newCard = document.createElement('div');
-                    newCard.className = 'channel-item-wrapper processing';
-                    newCard.dataset.taskId = data.task_id;
-                    newCard.dataset.channelName = channelName;
-                    newCard.innerHTML = `
-                        <a href="#" class="channel-link" onclick="return false;">
-                            <div class="channel-avatar-spinner"></div>
-                            <span class="channel-name">${channelName}</span>
-                        </a>
-                        <div class="status-badge">Processing</div>
-                    `;
-                    sidebarList.appendChild(newCard);
-                }
-                // --- END NEW ---
-
                 // Task started, begin polling for status updates
                 pollingIntervals[data.task_id] = setInterval(() => checkTaskStatus(data.task_id), 3000);
                 if (urlInput) urlInput.value = '';
@@ -228,19 +504,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         })
         .catch(error => {
-            // The error object might have an 'action' property for specific UI responses
-            if (error && error.action === 'show_upgrade_popup') {
-                // This function should be globally available from base.html
-                if (window.showUpgradePopup) {
-                    window.showUpgradePopup(error.message);
-                } else {
-                    showNotification(error.message, 'error'); // Fallback
-                }
-            } else {
-                const errorMessage = error.message || 'An unknown error occurred.';
-                showNotification(errorMessage, 'error');
-            }
-            // On any error, show the form again
+            console.error('Submission error:', error);
+            showNotification(error.message, 'error');
+            // On error, hide the progress bar and show the form again
             showFormView(true);
         });
     }
@@ -272,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pendingActionJSON) {
             const pendingAction = JSON.parse(pendingActionJSON);
             localStorage.removeItem('action_after_login');
-
+            
             if (pendingAction.type === 'process_channel' && pendingAction.url) {
                 if (urlInput) urlInput.value = pendingAction.url;
                 submitChannelForm(pendingAction.url);
