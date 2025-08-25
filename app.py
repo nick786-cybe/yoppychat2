@@ -156,6 +156,9 @@ def whop_landing():
 
 @app.route('/auth/whop/installation-callback')
 def whop_installation_callback():
+    print("\n--- Whop Installation Callback Triggered ---")
+    print(f"[DEBUG] Installation Request URL: {request.url}")
+    print(f"[DEBUG] Installation Request Headers: {request.headers}")
     token = request.args.get('token')
     jwt_secret = os.environ.get('JWT_SECRET')
     if not token or not jwt_secret:
