@@ -475,6 +475,9 @@ def whop_app_entry():
     and redirects to the appropriate page.
     """
     print("\n--- Whop App Entry Triggered ---")
+    print(f"[DEBUG] Request URL: {request.url}")
+    print(f"[DEBUG] Request Headers: {request.headers}")
+    print(f"[DEBUG] Request Args: {request.args}")
     user_token = whop_api.get_embedded_user_token(request)
     if not user_token:
         flash("Authentication failed. Please access the app through your Whop community.", "error")
