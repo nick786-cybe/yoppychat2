@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block page_styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Admin Dashboard</h1>
+</div>
+
+<div class="admin-section">
+    <h2 class="section-title">Manage Plans</h2>
+    <div class="form-card">
+        <form id="createPlanForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="plan_id">Plan ID</label>
+                    <input type="text" id="plan_id" name="plan_id" placeholder="e.g., pro_tier" required>
+                </div>
+                <div class="form-group">
+                    <label for="plan_name">Plan Name</label>
+                    <input type="text" id="plan_name" name="plan_name" placeholder="e.g., Pro Tier" required>
+                </div>
+                <div class="form-group">
+                    <label for="max_channels">Max Channels / Shared</label>
+                    <input type="number" id="max_channels" name="max_channels" placeholder="e.g., 10" required>
+                </div>
+                <div class="form-group">
+                    <label for="max_queries">Max Queries / Month</label>
+                    <input type="number" id="max_queries" name="max_queries" placeholder="e.g., 5000" required>
+                </div>
+                <div class="form-group">
+                    <label for="plan_type">Plan Type</label>
+                    <select id="plan_type" name="plan_type" required>
+                        <option value="user">Direct User Plan</option>
+                        <option value="community">Community Plan</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Plan</button>
+        </form>
+    </div>
+</div>
+
+<div class="admin-section">
+    <h2 class="section-title">Whop Communities</h2>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Community ID</th>
+                    <th>Owner</th>
+                    <th>Current Plan</th>
+                    <th>Queries Used</th>
+                    <th>Shared Channels</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for community in communities %}
+                <tr>
+                    <td class="id-cell" title="{{ community.id }}">{{ community.id[:8] }}...</td>
+                    <td title="{{ community.owner.email }}">{{ community.owner.full_name or community.owner.email }}</td>
+                    <td><span class="plan-badge">{{ community.plan_id }}</span></td>
+                    <td>{{ community.queries_used }} / {{ community.query_limit }}</td>
+                    <td>{{ community.shared_channel_limit }}</td>
+                    <td>
+                        <div class="action-group">
+                            <select id="community-plan-{{ community.id }}">
+                                {% for plan_id, plan_details in COMMUNITY_PLANS.items() %}
+                                    <option value="{{ plan_id }}" {% if community.plan_id == plan_id %}selected{% endif %}>
+                                        {{ plan_details.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn-secondary" onclick="setCurrentPlan('{{ community.id }}', 'community', document.getElementById('community-plan-{{ community.id }}').value)">Set Plan</button>
+                            <button class="btn-secondary" onclick="setDefaultPlan('{{ community.plan_id }}', 'community')">Set Default</button>
+                            <button class="btn-danger" onclick="removePlan('{{ community.id }}', 'community')">Remove Plan</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="admin-section">
+    <h2 class="section-title">Direct Users (Non-Whop)</h2>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Current Plan</th>
+                    <th>Queries Used</th>
+                    <th>Channels</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in non_whop_users %}
+                <tr>
+                    <td title="{{ user.email }}">{{ user.full_name or user.email }}</td>
+                    <td><span class="plan-badge">{{ user.direct_subscription_plan or 'free' }}</span></td>
+                    <td>{{ user.usage[0].queries_this_month if user.usage else 'N/A' }}</td>
+                    <td>{{ user.usage[0].channels_processed if user.usage else 'N/A' }}</td>
+                    <td>
+                        <div class="action-group">
+                            <select id="user-plan-{{ user.id }}">
+                                {% for plan_id, plan_details in all_plans.items() %}
+                                    {% if not plan_id.startswith('whop_') and plan_id not in ['admin_testing', 'community_member'] %}
+                                        <option value="{{ plan_id }}" {% if user.direct_subscription_plan == plan_id or (not user.direct_subscription_plan and plan_id == 'free') %}selected{% endif %}>
+                                            {{ plan_details.name }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <button class="btn-secondary" onclick="setCurrentPlan('{{ user.id }}', 'user', document.getElementById('user-plan-{{ user.id }}').value)">Set Plan</button>
+                            <button class="btn-secondary" onclick="setDefaultPlan('{{ user.direct_subscription_plan or 'free' }}', 'user')">Set Default</button>
+                            <button class="btn-danger" onclick="removePlan('{{ user.id }}', 'user')">Remove Plan</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

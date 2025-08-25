@@ -18,6 +18,15 @@ def get_profile(user_id: str):
         log.error(f"Error getting profile for user {user_id}: {e}")
         return None
 
+def get_usage_stats(user_id: str):
+    """Fetches a user's usage statistics from the usage_stats table."""
+    try:
+        response = supabase.table('usage_stats').select('*').eq('user_id', user_id).maybe_single().execute()
+        return response.data if response and response.data else {}
+    except Exception as e:
+        log.error(f"Error getting usage stats for user {user_id}: {e}")
+        return {} # Return an empty dict on error to prevent crashes downstream
+
 def link_user_to_community(user_id: str, community_id: str):
     """Creates a link in the user_communities join table."""
     try:
@@ -127,9 +136,21 @@ def increment_personal_query_usage(user_id: str):
     """
     try:
         params = {'p_user_id': user_id}
-        supabase.rpc('increment_personal_query_usage', params).execute()
+        supabase.rpc('increment_query_counts', params).execute()
     except Exception as e:
         log.error(f"Error incrementing personal query usage for user {user_id}: {e}")
+
+def increment_channels_processed(user_id: str):
+    """
+    Increments the channels_processed counter for a specific user.
+    This should be called only when a new, unique channel is added to a user's list.
+    """
+    try:
+        params = {'p_user_id': user_id}
+        # Use the existing RPC function suggested by the database error hint.
+        supabase.rpc('increment_channel_count', params).execute()
+    except Exception as e:
+        log.error(f"Error incrementing channels processed for user {user_id}: {e}")
 
 def create_initial_usage_stats(user_id: str):
     """Creates the initial usage_stats row for a new user."""

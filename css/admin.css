@@ -1,0 +1,148 @@
+/* yoppychat2/static/css/admin.css */
+
+.admin-section {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--neutral-200);
+    padding-bottom: var(--spacing-sm);
+}
+
+.table-container {
+    overflow-x: auto;
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: var(--spacing-md) var(--spacing-lg);
+    text-align: left;
+    border-bottom: 1px solid var(--neutral-200);
+    vertical-align: middle;
+}
+
+thead th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background-color: var(--surface-medium);
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background-color: var(--surface-medium);
+}
+
+.id-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plan-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    background-color: var(--accent-purple-light);
+    color: var(--accent-purple);
+}
+
+select {
+    padding: 8px 12px;
+    border: 1px solid var(--neutral-300);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-light);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+}
+/* yoppychat2/static/css/admin.css */
+
+.form-card {
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    font-weight: 500;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+}
+
+.action-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.btn-secondary {
+    padding: 8px 12px;
+    background-color: var(--surface-medium);
+    color: var(--text-primary);
+    border: 1px solid var(--neutral-300);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-secondary:hover {
+    background-color: var(--neutral-200);
+}
+/* In yoppychat2/static/css/admin.css */
+
+.btn-danger {
+    padding: 8px 12px;
+    background-color: var(--accent-error);
+    color: var(--text-white);
+    border: 1px solid var(--accent-error);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-danger:hover {
+    opacity: 0.9;
+}

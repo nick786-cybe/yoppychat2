@@ -30,6 +30,7 @@ import hashlib
 import base64
 from utils.subscription_utils import PLANS, COMMUNITY_PLANS
 
+
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -487,17 +488,16 @@ def whop_app_entry():
         return redirect(url_for('home'))
 
     try:
+        session.clear()
+
         supabase_admin = get_supabase_admin_client()
         email = whop_user.get('email')
         whop_user_id = whop_user.get('id')
 
         print(f"[INFO] Whop User Detected: {email} (Whop ID: {whop_user_id})")
 
-        # --- THIS IS THE FIX ---
-        # The list_users() call returns a list of users directly. We iterate over this list.
         list_of_users = supabase_admin.auth.admin.list_users()
         auth_user = next((u for u in list_of_users if u.email == email), None)
-        # --- END FIX ---
 
         if not auth_user:
             print(f"[INFO] No existing user found for {email}. Creating new user...")
@@ -507,7 +507,11 @@ def whop_app_entry():
             print(f"[SUCCESS] Created new user with App ID: {auth_user.id}")
 
         app_user_id = str(auth_user.id)
-        user_role = whop_api.get_user_role_in_company(whop_user_id)
+        
+        # --- THIS IS THE FIX ---
+        # Pass the company data to the role-checking function
+        user_role = whop_api.get_user_role_in_company(whop_user_id, whop_company)
+        # --- END OF FIX ---
 
         print(f"[INFO] User Role Determined: {user_role}")
 
@@ -558,20 +562,16 @@ def whop_app_entry():
         print(f"--- Login successful for {email}. Redirecting to dashboard. ---")
         flash(f"Welcome from {whop_company.get('title', 'your community')}!", 'success')
 
-        # For all users (owners and members), try to find the community's default channel and redirect there.
         community_res = supabase_admin.table('communities').select('default_channel_id').eq('id', community_id).single().execute()
         if community_res.data and community_res.data.get('default_channel_id'):
             channel_id = community_res.data['default_channel_id']
             channel_res = supabase_admin.table('channels').select('channel_name').eq('id', channel_id).single().execute()
             if channel_res.data and channel_res.data.get('channel_name'):
-                # If a default channel exists, everyone goes to the ask page for it.
                 return redirect(url_for('ask', channel_name=channel_res.data['channel_name']))
 
-        # Fallback if no default channel is set.
-        # For owners, they can set one up. For members, they must wait.
         if user_role == 'member':
             flash("Your community owner has not set a default channel yet. You will be able to chat once one is configured.", "info")
-        else: # For admins/owners
+        else:
             flash("Welcome! Please add a channel and set it as the default for your community members.", "info")
 
         return redirect(url_for('channel'))
@@ -639,16 +639,35 @@ def channel():
                 existing = db_utils.find_channel_by_url(cleaned_url)
 
                 if existing:
-                    db_utils.link_user_to_channel(user_id, existing['id'])
+                    # If the channel exists, we try to link it.
+                    link_response = db_utils.link_user_to_channel(user_id, existing['id'])
+                    # Only increment if a new link was actually created.
+                    if link_response:
+                        db_utils.increment_channels_processed(user_id)
+
                     if redis_client: redis_client.delete(f"user_channels:{user_id}")
                     return jsonify({'status': 'success', 'message': 'Channel added to your list.'})
                 else:
-                    # Personal channels are NOT shared and not linked to a community
-                    new_channel = db_utils.create_channel(cleaned_url, user_id, is_shared=False, community_id=None)
+                    # If the channel is new, create it first.
+                    # A channel added by a community owner should be linked to their community
+                    # so they have the option to share it later.
+                    community_id_for_channel = None
+                    if user_status.get('is_active_community_owner'):
+                        community_id_for_channel = active_community_id
+
+                    new_channel = db_utils.create_channel(
+                        cleaned_url,
+                        user_id,
+                        is_shared=False, # A new channel always starts as personal
+                        community_id=community_id_for_channel
+                    )
                     if not new_channel:
                         return jsonify({'status': 'error', 'message': 'Could not create channel record.'}), 500
 
+                    # Then link it. This will always be a new link.
                     db_utils.link_user_to_channel(user_id, new_channel['id'])
+                    db_utils.increment_channels_processed(user_id)
+
                     task = process_channel_task.schedule(args=(new_channel['id'],), delay=1)
                     if redis_client: redis_client.delete(f"user_channels:{user_id}")
                     return jsonify({'status': 'processing', 'task_id': task.id})
@@ -666,7 +685,7 @@ def channel():
 
 @app.route('/add_shared_channel', methods=['POST'])
 @login_required
-@admin_channel_limit_enforcer
+@community_channel_limit_enforcer
 def add_shared_channel():
     user_id = session['user']['id']
     community_id = session.get('active_community_id')
@@ -783,14 +802,48 @@ def stream_answer():
     # After a successful query, we need to increment the usage counter.
     # This wrapper will be called by the streaming generator upon completion.
     def on_complete_callback():
+        # Increment usage counters first
         user_status = get_user_status(user_id, active_community_id)
         if user_status.get('has_personal_plan'):
             db_utils.increment_personal_query_usage(user_id)
         elif active_community_id:
             db_utils.increment_community_query_usage(active_community_id, is_trial=is_owner_in_trial)
-            db_utils.increment_personal_query_usage(user_id) # Also track personal usage from pool
+            db_utils.increment_personal_query_usage(user_id)
         else:
             db_utils.increment_personal_query_usage(user_id)
+
+        # Invalidate all relevant caches to ensure the next fetch is fresh
+        if hasattr(db_utils, 'get_profile') and hasattr(db_utils.get_profile, 'cache_clear'):
+            db_utils.get_profile.cache_clear()
+
+        if redis_client:
+            user_cache_key = f"user_status:{user_id}:community:{active_community_id or 'none'}"
+            redis_client.delete(user_cache_key)
+            if active_community_id:
+                community_cache_key = f"community_status:{active_community_id}"
+                redis_client.delete(community_cache_key)
+
+        # Fetch the fresh data after cache invalidation
+        fresh_user_status = get_user_status(user_id, active_community_id)
+        fresh_community_status = get_community_status(active_community_id) if active_community_id else None
+
+        # Reconstruct the query count string based on the fresh data
+        query_string = ""
+        if fresh_user_status and (fresh_user_status.get('has_personal_plan') or not fresh_user_status.get('is_whop_user')):
+            max_queries = fresh_user_status['limits'].get('max_queries_per_month', 0)
+            if max_queries == float('inf'):
+                query_string = "You have <strong>Unlimited</strong> personal queries."
+            else:
+                queries_used = fresh_user_status['usage'].get('queries_this_month', 0)
+                remaining = int(max_queries - queries_used)
+                query_string = f"You have <strong>{remaining}</strong> personal queries remaining."
+        elif fresh_community_status:
+            max_queries = fresh_community_status['limits'].get('query_limit', 0)
+            queries_used = fresh_community_status['usage'].get('queries_used', 0)
+            remaining = int(max_queries - queries_used)
+            query_string = f"The community has <strong>{remaining}</strong> shared queries remaining."
+
+        return query_string
 
     MAX_CHAT_MESSAGES = 20
     current_channel_name_for_history = channel_name or 'general'
@@ -1045,8 +1098,11 @@ def privacy():
 def terms():
     return render_template('terms.html', saved_channels=get_user_channels())
 
+from utils.subscription_utils import community_channel_limit_enforcer
+
 @app.route('/api/toggle_channel_privacy/<int:channel_id>', methods=['POST'])
 @login_required
+@community_channel_limit_enforcer(check_on_increase_only=True)
 def toggle_channel_privacy(channel_id):
     """
     Allows a community owner to toggle a channel between personal and shared.
@@ -1120,5 +1176,157 @@ if os.environ.get("FLASK_ENV") == "development":
         db_utils.create_initial_usage_stats(user_id)
         return 'Logged in as test user'
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('home'))
+        
+        # NOTE: Replace 'your-admin-user-id' with your actual Supabase user ID.
+        admin_user_id = '2f092c41-e0c5-4533-98a2-9e5da027d0ed'
+        
+        if str(session['user']['id']) != admin_user_id:
+            flash('You do not have permission to access this page.', 'error')
+            return redirect(url_for('channel'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    supabase_admin = get_supabase_admin_client()
+    
+    communities_res = supabase_admin.table('communities').select('*, owner:owner_user_id(full_name, email)').execute()
+    communities = communities_res.data if communities_res.data else []
+    
+    non_whop_users_res = supabase_admin.table('profiles').select('*, usage:usage_stats(*)').is_('whop_user_id', None).execute()
+    non_whop_users = non_whop_users_res.data if non_whop_users_res.data else []
+
+    saved_channels = get_user_channels() 
+
+    return render_template(
+        'admin.html', 
+        communities=communities, 
+        non_whop_users=non_whop_users, 
+        all_plans=PLANS, 
+        COMMUNITY_PLANS=COMMUNITY_PLANS,
+        saved_channels=saved_channels
+    )
+
+@app.route('/api/admin/create_plan', methods=['POST'])
+@admin_required
+def api_admin_create_plan():
+    data = request.get_json()
+    plan_id = data.get('plan_id')
+    plan_name = data.get('plan_name')
+    max_channels = data.get('max_channels')
+    max_queries = data.get('max_queries')
+    plan_type = data.get('plan_type')
+
+    if not all([plan_id, plan_name, max_channels, max_queries, plan_type]):
+        return jsonify({'status': 'error', 'message': 'All fields are required.'}), 400
+
+    try:
+        if plan_type == 'user':
+            PLANS[plan_id] = {
+                'name': plan_name,
+                'max_channels': int(max_channels),
+                'max_queries_per_month': int(max_queries)
+            }
+        elif plan_type == 'community':
+            COMMUNITY_PLANS[plan_id] = {
+                'name': plan_name,
+                'shared_channels_allowed': int(max_channels),
+                'queries_per_month': int(max_queries)
+            }
+        else:
+            return jsonify({'status': 'error', 'message': 'Invalid plan type.'}), 400
+
+        return jsonify({'status': 'success', 'message': f'Plan "{plan_name}" created successfully.'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/admin/set_default_plan', methods=['POST'])
+@admin_required
+def api_admin_set_default_plan():
+    data = request.get_json()
+    plan_id = data.get('plan_id')
+    plan_type = data.get('type')
+
+    if not all([plan_id, plan_type]):
+        return jsonify({'status': 'error', 'message': 'Missing required fields.'}), 400
+
+    print(f"Default plan for {plan_type} set to: {plan_id}")
+
+    return jsonify({'status': 'success', 'message': f'Default plan for {plan_type} has been set to "{plan_id}".'})
+
+@app.route('/api/admin/set_current_plan', methods=['POST'])
+@admin_required
+def api_admin_set_current_plan():
+    data = request.get_json()
+    target_id = data.get('id')
+    plan_id = data.get('plan_id')
+    plan_type = data.get('type')
+
+    if not all([target_id, plan_id, plan_type]):
+        return jsonify({'status': 'error', 'message': 'Missing required fields.'}), 400
+
+    supabase_admin = get_supabase_admin_client()
+    
+    try:
+        if plan_type == 'community':
+            plan_details = COMMUNITY_PLANS.get(plan_id)
+            if not plan_details:
+                return jsonify({'status': 'error', 'message': 'Invalid community plan ID.'}), 400
+            
+            update_data = {
+                'plan_id': plan_id,
+                'shared_channel_limit': plan_details['shared_channels_allowed'],
+                'query_limit': plan_details['queries_per_month']
+            }
+            supabase_admin.table('communities').update(update_data).eq('id', target_id).execute()
+
+        elif plan_type == 'user':
+            if plan_id not in PLANS:
+                return jsonify({'status': 'error', 'message': 'Invalid user plan ID.'}), 400
+            
+            supabase_admin.table('profiles').update({'direct_subscription_plan': plan_id}).eq('id', target_id).execute()
+
+        return jsonify({'status': 'success', 'message': 'Plan updated successfully.'})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/admin/remove_plan', methods=['POST'])
+@admin_required
+def api_admin_remove_plan():
+    data = request.get_json()
+    target_id = data.get('id')
+    target_type = data.get('type')
+
+    if not all([target_id, target_type]):
+        return jsonify({'status': 'error', 'message': 'Missing required fields.'}), 400
+
+    supabase_admin = get_supabase_admin_client()
+    
+    try:
+        if target_type == 'community':
+            # Revert to the default 'basic_community' plan
+            default_plan = COMMUNITY_PLANS.get('basic_community')
+            update_data = {
+                'plan_id': 'basic_community',
+                'shared_channel_limit': default_plan['shared_channels_allowed'],
+                'query_limit': default_plan['queries_per_month']
+            }
+            supabase_admin.table('communities').update(update_data).eq('id', target_id).execute()
+
+        elif target_type == 'user':
+            # Revert to the default 'free' plan by setting the plan to null
+            supabase_admin.table('profiles').update({'direct_subscription_plan': None}).eq('id', target_id).execute()
+
+        return jsonify({'status': 'success', 'message': 'Plan removed successfully.'})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

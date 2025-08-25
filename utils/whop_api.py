@@ -43,37 +43,30 @@ def get_current_company() -> Optional[dict]:
     code, data = _http_get(f"{WHOP_API_BASE}/v5/company", headers)
     return data if code == 200 and isinstance(data, dict) else None
 
-def get_user_role_in_company(user_id: str) -> Optional[str]:
+def get_user_role_in_company(user_id: str, company_data: dict) -> Optional[str]:
     """
-    Determine user's role. Owner/Admin are treated as 'admin'.
-    Defaults to 'admin' if membership status is unclear.
+    Determine user's role in the provided company.
     """
     if not APP_API_KEY:
         return "admin"
         
-    app_headers = {"Authorization": f"Bearer {APP_API_KEY}"}
-    
     try:
-        # 1. Check if the user is the company owner. If so, they are an 'admin'.
-        comp_code, comp_data = _http_get(f"{WHOP_API_BASE}/v5/company", app_headers)
-        if comp_code == 200 and isinstance(comp_data, dict):
-            if comp_data.get("authorized_user") == user_id or comp_data.get("owner_id") == user_id:
-                return "admin"
+        # Check if the user is the owner of the current company
+        if company_data.get("authorized_user") == user_id or company_data.get("owner_id") == user_id:
+            return "admin"
 
-        # 2. Get all memberships for the company.
+        # If not the owner, check their membership status
+        app_headers = {"Authorization": f"Bearer {APP_API_KEY}"}
         mem_code, mem_data = _http_get(f"{WHOP_API_BASE}/v5/company/memberships", app_headers)
+        
         if mem_code != 200 or not isinstance(mem_data, dict):
-            print(f"Warning: Could not fetch memberships. Defaulting user {user_id} to admin.")
             return "admin"
         
         memberships = mem_data.get("data", [])
         user_membership = next((m for m in memberships if m.get("user_id") == user_id), None)
 
-        if not user_membership:
-            return "admin"
-        
-        if not user_membership.get("valid", False) or user_membership.get("status") != "completed":
-            return None # Invalid members get no role.
+        if not user_membership or not user_membership.get("valid") or user_membership.get("status") != "completed":
+            return "admin" # Default to admin if no valid membership is found
         
         ADMIN_PLAN_IDS = os.getenv("WHOP_ADMIN_PLAN_IDS", "").split(',')
         if user_membership.get("plan_id") in ADMIN_PLAN_IDS:

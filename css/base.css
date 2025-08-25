@@ -1,0 +1,553 @@
+/* CSS for the Login Popup (Restored) */
+.login-popup-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 2000; animation: fadeIn 0.3s ease;
+}
+.login-popup-content {
+    background: var(--surface-light); padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl); box-shadow: var(--shadow-xl);
+    width: 100%; max-width: 420px; text-align: center;
+    position: relative; animation: slideUp 0.4s ease;
+}
+.login-popup-close-btn {
+    position: absolute; top: 16px; right: 16px; background: none;
+    border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;
+    padding: 5px;
+}
+.login-popup-icon { margin-bottom: var(--spacing-lg); }
+.login-popup-title {
+    font-size: 1.75rem; font-weight: 700; color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+.login-popup-subtitle { color: var(--text-secondary); margin-bottom: var(--spacing-xl); }
+.login-popup-google-btn {
+    display: flex; align-items: center; justify-content: center;
+    gap: var(--spacing-md); width: 100%; padding: var(--spacing-md);
+    background: var(--surface-light); color: var(--text-primary);
+    border: 1px solid var(--neutral-300); border-radius: var(--radius-md);
+    font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+}
+.login-popup-google-btn:hover { background: var(--surface-medium); }
+.login-popup-terms { font-size: 0.8rem; color: var(--text-muted); margin-top: var(--spacing-lg); }
+@media (max-width: 768px) {
+    #login-popup-modal { align-items: flex-end; }
+    #login-popup-modal .login-popup-content {
+        max-width: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+        animation: slideUpFromBottom 0.4s ease;
+    }
+    @keyframes slideUpFromBottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
+}
+/* === NEW SIDEBAR STYLES === */
+
+/* Redesigned Sidebar Header */
+.sidebar-header {
+    background: var(--surface-light); /* Changed from gradient */
+    border-bottom: 1px solid var(--neutral-200);
+    padding: var(--spacing-md) var(--spacing-lg); /* Adjust padding */
+}
+
+.sidebar-logo-link {
+    /* This rule can remain, but the text-specific ones are no longer needed */
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+/* Redesigned Sidebar Footer */
+.sidebar-footer {
+    padding: var(--spacing-md); /* Standardized padding */
+    margin-top: auto; /* This is the magic line that pushes the footer to the bottom */
+    border-top: 1px solid var(--neutral-200);
+}
+
+.sidebar-actions {
+    margin-bottom: var(--spacing-md);
+}
+
+.sidebar-action-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-action-item:hover {
+    background-color: var(--surface-medium);
+    color: var(--text-primary);
+}
+
+/* New User Profile Section at the very bottom */
+.user-profile-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-medium);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-details {
+    flex-grow: 1;
+    min-width: 0; /* Prevents overflow with long names */
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-button {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.logout-button:hover {
+    background-color: var(--neutral-200);
+    color: var(--accent-error);
+}
+
+.profile-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    z-index: 1001;
+}
+
+/* --- New Profile Menu Styles --- */
+.menu-plan-display {
+    background-color: var(--surface-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--neutral-200);
+}
+
+.plan-badge {
+    display: inline-block;
+    background-color: var(--accent-primary-light);
+    color: var(--accent-primary);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-sm);
+}
+
+.plan-queries {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.plan-queries strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.menu-upgrade-button {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    margin-bottom: var(--spacing-md);
+    border: none;
+}
+
+.menu-upgrade-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    opacity: 0.95;
+}
+
+#profile-container:hover .profile-menu, .profile-menu.show {
+    display: block;
+}
+
+.profile-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--surface-light);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+    z-index: 1001;
+}
+
+.menu-header {
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--neutral-200);
+    margin-bottom: var(--spacing-md);
+}
+
+.menu-username {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.menu-email {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.menu-plan-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.menu-plan-name {
+    font-weight: 500;
+}
+
+.menu-upgrade-btn {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+
+.menu-credits-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    font-size: 0.875rem;
+}
+
+.menu-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-links a {
+    display: block;
+    padding: var(--spacing-sm) 0;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.menu-links a:hover {
+    color: var(--text-primary);
+}
+/* === Custom Notification Styles === */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification {
+    background: var(--surface-light);
+    color: var(--text-primary);
+    padding: 16px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    border-left: 5px solid;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification.hide {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+/* --- Notification Types --- */
+.notification.success {
+    border-left-color: var(--accent-success);
+}
+
+.notification.error {
+    border-left-color: var(--accent-error);
+}
+
+.notification.info {
+    border-left-color: var(--accent-info);
+}
+
+.notification-message {
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+/* In static/css/main-purged.css */
+
+/* New spinner for inline actions like the delete icon */
+.inline-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--accent-primary);
+    border-top-color: transparent; /* Makes it a classic spinner */
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes inline-spin {
+  0% { transform: scale(0.8); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+  100% { transform: scale(0.8); opacity: 1; }
+}
+
+.login-prompt-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    padding: var(--spacing-md);
+    background-color: var(--surface-medium);
+    border: 2px dashed var(--neutral-300);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.login-prompt-btn:hover {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-secondary);
+    color: var(--text-white);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.login-prompt-btn svg {
+    transition: transform 0.2s ease-in-out;
+}
+
+.login-prompt-btn:hover svg {
+    transform: translateX(3px);
+}
+/* Class to hide the SVG icon when the spinner is active */
+.delete-btn.deleting svg {
+    display: none;
+}
+/* Add this to your main CSS file */
+
+.pricing-grid-modal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+/* Reusing styles from your landing page for consistency */
+.pricing-card {
+    background: var(--surface-light);
+    padding: 2rem 1.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--neutral-200);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.pricing-card.featured {
+    border: 2px solid var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.popular-badge {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--accent-primary);
+    color: var(--text-white);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.3rem 0.8rem;
+    border-radius: var(--radius-full);
+}
+
+.pricing-card h4 { font-size: 1.5rem; font-weight: 700; }
+.pricing-card .price { font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0; }
+.pricing-card .price.price-featured { font-size: 2.5rem; }
+.pricing-card .price span { font-size: 1rem; font-weight: 500; color: var(--text-muted); }
+.pricing-features { list-style: none; margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.8rem; flex-grow: 1; }
+.pricing-features li { display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); }
+.pricing-features .icon { color: var(--accent-success); }
+
+.btn-pricing {
+    display: block; width: 100%; text-align: center;
+    padding: 0.9rem 1.5rem; border-radius: var(--radius-md);
+    font-weight: 600; text-decoration: none; transition: all 0.3s ease;
+}
+
+.btn-pricing.disabled {
+    background-color: var(--accent-success);
+    color: var(--text-white);
+    cursor: default;
+    opacity: 0.8;
+}
+
+.btn-pricing-neutral {
+    background-color: var(--neutral-200); color: var(--text-primary);
+}
+.btn-pricing-neutral:not(.disabled):hover { background-color: var(--neutral-300); }
+
+.btn-pricing-accent {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: var(--text-white);
+}
+.btn-pricing-accent:not(.disabled):hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+/* --- START: MODIFIED PRICING MODAL STYLES --- */
+@media (max-width: 950px) {
+    /* Apply a standard "center" alignment for the pricing modal */
+    #pricing-modal-overlay {
+        align-items: center;
+    }
+
+    /* Constrain the pricing modal's size and make its content scrollable */
+    #pricing-modal-overlay .login-popup-content {
+        max-width: 90%; /* Use more screen width */
+        max-height: 85vh; /* Limit height to 85% of the viewport height */
+        overflow-y: auto; /* Allow vertical scrolling INSIDE the modal */
+        padding: 1.5rem; /* Reduce padding on mobile */
+        animation: slideUp 0.4s ease; /* Use a standard slide up animation */
+    }
+
+    /* Stack pricing cards vertically */
+    .pricing-grid-modal {
+        grid-template-columns: 1fr;
+    }
+
+    /* Remove the "featured" scaling effect on mobile */
+    .pricing-card.featured {
+        transform: scale(1);
+    }
+}
+.menu-toggle-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.theme-switch input { display: none; }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--neutral-300);
+    transition: .3s;
+    border-radius: 24px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: var(--accent-primary);
+}
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+html[data-theme='dark'] .menu-toggle-option {
+    color: var(--text-secondary);
+}
+/* --- Dynamic Logo Styles for Dark Mode --- */
+
+/* By default, show the light logo and hide the dark one */
+.logo-dark {
+    display: none;
+}
+.logo-light {
+    display: block;
+}
+
+/* When dark mode is active, hide the light logo and show the dark one */
+html[data-theme='dark'] .logo-dark {
+    display: block;
+}
+html[data-theme='dark'] .logo-light {
+    display: none;
+}
+/* =================================================================
+   FIX: Sidebar Delete Button Theme Styles
+================================================================== */
+
+/* --- Base and Light Mode Styles --- */
