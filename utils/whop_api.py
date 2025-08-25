@@ -66,33 +66,42 @@ def get_current_company(user_token: str = None, company_id: str = None) -> Optio
     print(f"[DEBUG] Static fetch response code: {code}")
     return data if code == 200 and isinstance(data, dict) else None
 
-def get_user_role_in_company(user_id: str, company_data: dict, user_token: str) -> Optional[str]:
+def get_user_role_in_company(user_id: str, company_data: dict, user_token: str = None) -> Optional[str]:
     """
     Determine user's role in the provided company.
+    Uses user_token for authentication if provided, otherwise falls back to APP_API_KEY.
     """
     try:
         company_id = company_data.get("id")
         if not company_id:
             print("Warning: company_data missing 'id'. Cannot determine user role.")
-            return "member" # Default to member
+            return "member"
 
-        # Check if the user is the owner of the current company via the authorized_user field.
+        # Check for ownership first, as it doesn't require a membership check.
         authorized_user = company_data.get("authorized_user")
-        if authorized_user and authorized_user.get('user_id') == user_id and authorized_user.get('role') == 'owner':
+        if (authorized_user and authorized_user.get('user_id') == user_id and authorized_user.get('role') == 'owner') or \
+           company_data.get("owner_id") == user_id:
             return "admin"
 
-        # Whop App-level owner check
-        if company_data.get("owner_id") == user_id:
-            return "admin"
+        # Determine which authentication method to use
+        if user_token:
+            # Use the user's own token for a more secure, context-aware check.
+            headers = {"Authorization": f"Bearer {user_token}"}
+            url = f"{WHOP_API_BASE}/v5/me/memberships?filter[company_id][eq]={company_id}&filter[valid][eq]=true"
+            log_prefix = "user's"
+        else:
+            # Fallback to the app key. This may fail if the key is not authorized for the company.
+            if not APP_API_KEY:
+                print("Warning: No user_token and no APP_API_KEY. Defaulting role to member.")
+                return "member"
+            headers = {"Authorization": f"Bearer {APP_API_KEY}"}
+            url = f"{WHOP_API_BASE}/v5/companies/{company_id}/memberships?filter[user_id][eq]={user_id}&filter[valid][eq]=true"
+            log_prefix = "app's"
 
-        # If not the owner, check their membership status using their own token.
-        user_headers = {"Authorization": f"Bearer {user_token}"}
-
-        url = f"{WHOP_API_BASE}/v5/me/memberships?filter[company_id][eq]={company_id}&filter[valid][eq]=true"
-        mem_code, mem_data = _http_get(url, user_headers)
+        mem_code, mem_data = _http_get(url, headers)
 
         if mem_code != 200 or not isinstance(mem_data, dict):
-            print(f"Failed to fetch user's memberships for company {company_id}. Defaulting role to member.")
+            print(f"Failed to fetch memberships for company {company_id} using {log_prefix} token. Defaulting role to member.")
             return "member"
 
         memberships = mem_data.get("data", [])
@@ -108,3 +117,11 @@ def get_user_role_in_company(user_id: str, company_data: dict, user_token: str) 
     except Exception as e:
         print(f"Error determining user role for {user_id}: {e}. Defaulting to member.")
         return "member"
+
+def get_company_by_id(company_id: str, user_token: str) -> Optional[dict]:
+    """Fetches a specific company by its ID using a user token."""
+    if not company_id or not user_token:
+        return None
+    headers = {"Authorization": f"Bearer {user_token}"}
+    code, data = _http_get(f"{WHOP_API_BASE}/v5/me/companies/{company_id}", headers)
+    return data if code == 200 and isinstance(data, dict) else None

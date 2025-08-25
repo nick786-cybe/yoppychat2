@@ -180,7 +180,8 @@ def whop_installation_callback():
         # Create the community first to get its ID
         community_data = {
             'whop_community_id': whop_community_id,
-            'owner_user_id': app_user_id
+            'owner_user_id': app_user_id,
+            'forwarded_host': request.headers.get('X-Forwarded-Host')
         }
         community = db_utils.add_community(community_data)
         if not community:
@@ -483,9 +484,24 @@ def whop_app_entry():
         flash("Authentication failed. Please access the app through your Whop community.", "error")
         return redirect(url_for('home'))
 
-    company_id = request.args.get('company_id') or request.args.get('business_id')
     whop_user = whop_api.get_user_from_token(user_token)
-    whop_company = whop_api.get_current_company(user_token, company_id)
+
+    forwarded_host = request.headers.get('X-Forwarded-Host')
+    whop_company = None
+    if forwarded_host:
+        print(f"[DEBUG] Found X-Forwarded-Host: {forwarded_host}")
+        supabase_admin = get_supabase_admin_client()
+        community_res = supabase_admin.table('communities').select('whop_community_id').eq('forwarded_host', forwarded_host).maybe_single().execute()
+        if community_res.data:
+            whop_community_id = community_res.data['whop_community_id']
+            print(f"[DEBUG] Found whop_community_id: {whop_community_id} for forwarded_host: {forwarded_host}")
+            whop_company = whop_api.get_company_by_id(whop_community_id, user_token)
+        else:
+            print(f"[DEBUG] No community found for forwarded_host: {forwarded_host}")
+
+    if not whop_company:
+        print("[DEBUG] Falling back to old company detection logic.")
+        whop_company = whop_api.get_current_company(user_token)
 
     if not whop_user or not whop_company:
         flash("Failed to verify user or company with Whop.", "error")
@@ -512,10 +528,7 @@ def whop_app_entry():
 
         app_user_id = str(auth_user.id)
 
-        # --- THIS IS THE FIX ---
-        # Pass the company data to the role-checking function
         user_role = whop_api.get_user_role_in_company(whop_user_id, whop_company, user_token)
-        # --- END OF FIX ---
 
         print(f"[INFO] User Role Determined: {user_role}")
 
@@ -545,6 +558,8 @@ def whop_app_entry():
             print(f"[INFO] Found existing community in DB with ID: {community_id}")
         elif user_role == 'admin':
             print(f"[INFO] Community not found. Creating for admin user {app_user_id}...")
+            # Note: We are not storing the forwarded_host here, as this is part of the login flow, not installation.
+            # The forwarded_host should only be stored during the installation callback.
             new_community = db_utils.add_community({
                 'whop_community_id': whop_community_id,
                 'owner_user_id': app_user_id
